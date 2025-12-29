@@ -1,0 +1,75 @@
+name: Daily Strategy Alert
+
+# Run at 8 AM ET Monday-Friday (12:00 UTC)
+on:
+  schedule:
+    - cron: '0 12 * * 1-5' # 8 AM ET = 12:00 UTC
+  workflow_dispatch: # Manual trigger button
+
+jobs:
+  run-daily-strategy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run strategy script
+        id: strategy
+        run: |
+          # Run the strategy script and capture output
+          output=$(python daily_strategy.py << 'EOF'
+
+          EOF
+          2>&1)
+
+          # Extract the key allocation line
+          allocation=$(echo "$output" | grep "Target Allocation:" | head -1)
+
+          if [ -z "$allocation" ]; then
+            echo "Error: Could not find allocation in output"
+            echo "Full output:"
+            echo "$output"
+            exit 1
+          fi
+
+          echo "allocation=$allocation" >> $GITHUB_OUTPUT
+          echo "full_output<<EOF" >> $GITHUB_OUTPUT
+          echo "$output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Send notification
+        if: success()
+        run: |
+          # Send email to SMS gateway (replace with your carrier)
+          # Common carriers:
+          # AT&T: @txt.att.net
+          # Verizon: @vtext.com
+          # T-Mobile: @tmomail.net
+          # Sprint: @messaging.sprintpcs.com
+
+          SUBJECT="Daily Strategy - $(date +%Y-%m-%d)"
+          BODY="${{ steps.strategy.outputs.allocation }}
+
+          Full Output:
+          ${{ steps.strategy.outputs.full_output }}"
+
+          # Send both SMS and email notifications
+          echo "$BODY" | mail -s "$SUBJECT" ${{ secrets.PHONE_NUMBER }}
+          echo "$BODY" | mail -s "$SUBJECT" ${{ secrets.EMAIL_ADDRESS }}
+
+      - name: Log results
+        if: always()
+        run: |
+          echo "Strategy run completed at $(date)"
+          echo "Allocation: ${{ steps.strategy.outputs.allocation }}"
