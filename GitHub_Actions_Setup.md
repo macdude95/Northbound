@@ -23,7 +23,7 @@ git push origin main
 3. **Click "Secrets and variables" → "Actions"**
 4. **Click "New repository secret"** (do this twice)
 
-**Add these two secrets:**
+**Add these four secrets:**
 
 **Secret 1 - Polygon API Key:**
 
@@ -34,6 +34,16 @@ git push origin main
 
 - **Name:** `EMAIL_ADDRESS`
 - **Value:** Your email address (e.g., `yourname@gmail.com`)
+
+**Secret 3 - Gmail Username:**
+
+- **Name:** `GMAIL_USERNAME`
+- **Value:** Your Gmail address (e.g., `yourname@gmail.com`)
+
+**Secret 4 - Gmail App Password:**
+
+- **Name:** `GMAIL_APP_PASSWORD`
+- **Value:** Your Gmail app password (16 characters, keep spaces)
 
 ## 🧪 Test the Setup
 
@@ -137,7 +147,7 @@ Modify the notification step to add custom filtering or alerts.
 ## ✅ Success Checklist
 
 - [ ] Code pushed to GitHub
-- [ ] POLYGON_API_KEY and EMAIL_ADDRESS secrets configured
+- [ ] POLYGON_API_KEY, EMAIL_ADDRESS, GMAIL_USERNAME, and GMAIL_APP_PASSWORD secrets configured
 - [ ] Manual test run successful
 - [ ] Email notifications received
 

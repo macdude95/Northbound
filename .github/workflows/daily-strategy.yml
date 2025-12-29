@@ -55,16 +55,20 @@ jobs:
       - name: Send notification
         if: success()
         run: |
-          # Send email
-
           SUBJECT="Daily Strategy - $(date +%Y-%m-%d)"
           BODY="${{ steps.strategy.outputs.allocation }}
 
           Full Output:
           ${{ steps.strategy.outputs.full_output }}"
 
-          # Send email notification
-          echo "$BODY" | mail -s "$SUBJECT" ${{ secrets.EMAIL_ADDRESS }}
+          # Send via Gmail SMTP
+          echo "$BODY" | mail -s "$SUBJECT" \
+            -S smtp="smtp.gmail.com:587" \
+            -S smtp-auth=login \
+            -S smtp-auth-user="${{ secrets.GMAIL_USERNAME }}" \
+            -S smtp-auth-password="${{ secrets.GMAIL_APP_PASSWORD }}" \
+            -S ssl-verify=ignore \
+            ${{ secrets.EMAIL_ADDRESS }}
 
       - name: Log results
         if: always()
