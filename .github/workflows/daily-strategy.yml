@@ -1,9 +1,9 @@
 name: Daily Strategy Alert
 
-# Run at 8 AM ET Monday-Friday (12:00 UTC)
+# Run when NYSE opens (9:30 AM ET = 14:30 UTC)
 on:
   schedule:
-    - cron: '0 12 * * 1-5' # 8 AM ET = 12:00 UTC
+    - cron: '30 14 * * 1-5' # 9:30 AM ET = 14:30 UTC
   workflow_dispatch: # Manual trigger button
 
 jobs:

@@ -75,7 +75,7 @@ python daily_strategy.py --skip-portfolio
 
 ## ⏰ Schedule Details
 
-- **Runs:** Monday-Friday at 8 AM Eastern Time
+- **Runs:** Monday-Friday when NYSE opens (9:30 AM ET)
 - **Timezone:** Automatically adjusts for daylight saving
 - **Manual trigger:** "Run workflow" button for testing
 
@@ -113,8 +113,9 @@ Full Output:
 
 ### Timezone Issues:
 
-- **Workflow runs in UTC** (8 AM ET = 12:00 UTC)
-- **Adjust cron schedule** if needed: `0 12 * * 1-5`
+- **Workflow runs at NYSE open** (9:30 AM ET = 14:30 UTC)
+- **Automatically adjusts** for daylight saving time
+- **Cron schedule:** `'30 14 * * 1-5'` (Monday-Friday at 14:30 UTC)
 
 ## 🎯 Advanced Configuration
 
