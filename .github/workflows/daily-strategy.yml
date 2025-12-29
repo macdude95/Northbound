@@ -27,7 +27,7 @@ jobs:
       - name: Install mail utilities
         run: |
           sudo apt-get update
-          sudo apt-get install -y mailutils
+          sudo apt-get install -y msmtp mailutils
 
       - name: Run strategy script
         id: strategy
@@ -61,14 +61,33 @@ jobs:
           Full Output:
           ${{ steps.strategy.outputs.full_output }}"
 
-          # Send via Gmail SMTP
-          echo "$BODY" | mail -s "$SUBJECT" \
-            -S smtp="smtp.gmail.com:587" \
-            -S smtp-auth=login \
-            -S smtp-auth-user="${{ secrets.GMAIL_USERNAME }}" \
-            -S smtp-auth-password="${{ secrets.GMAIL_APP_PASSWORD }}" \
-            -S ssl-verify=ignore \
-            ${{ secrets.EMAIL_ADDRESS }}
+          # Configure msmtp for Gmail SMTP
+          cat > ~/.msmtprc << EOF
+          defaults
+          tls on
+          tls_starttls on
+          tls_trust_file /etc/ssl/certs/ca-certificates.crt
+          account gmail
+          host smtp.gmail.com
+          port 587
+          auth on
+          user ${{ secrets.GMAIL_USERNAME }}
+          password ${{ secrets.GMAIL_APP_PASSWORD }}
+          from ${{ secrets.GMAIL_USERNAME }}
+          account default : gmail
+          EOF
+
+          chmod 600 ~/.msmtprc
+
+          # Send email using msmtp
+          echo "$BODY" | msmtp -t <<EOF
+          To: ${{ secrets.EMAIL_ADDRESS }}
+          From: ${{ secrets.GMAIL_USERNAME }}
+          Subject: $SUBJECT
+          Content-Type: text/plain
+
+          $BODY
+          EOF
 
       - name: Log results
         if: always()
