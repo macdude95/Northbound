@@ -24,6 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install mail utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mailutils
+
       - name: Run strategy script
         id: strategy
         env:
@@ -50,12 +55,7 @@ jobs:
       - name: Send notification
         if: success()
         run: |
-          # Send email to SMS gateway (replace with your carrier)
-          # Common carriers:
-          # AT&T: @txt.att.net
-          # Verizon: @vtext.com
-          # T-Mobile: @tmomail.net
-          # Sprint: @messaging.sprintpcs.com
+          # Send email
 
           SUBJECT="Daily Strategy - $(date +%Y-%m-%d)"
           BODY="${{ steps.strategy.outputs.allocation }}

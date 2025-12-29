@@ -94,7 +94,12 @@ Full Output:
 
 - **Check "Actions" tab** for error logs
 - **Verify all dependencies** are in `requirements.txt`
-- **Test locally** with `python daily_strategy.py`
+- **Test locally** with `python daily_strategy.py --skip-portfolio`
+
+### Mail Command Issues:
+
+- **GitHub Actions automatically installs mailutils** for email functionality
+- **If mail still fails**, check that EMAIL_ADDRESS secret is properly set
 
 ### Timezone Issues:
 
