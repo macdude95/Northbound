@@ -4,59 +4,77 @@ Daily 50-Day MA Strategy Calculator
 Run this script daily to get TQQQ/SQQQ allocation instructions.
 """
 
-import yfinance as yf
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
-import sqlite3
 import sys
 import os
+import argparse
+from polygon import RESTClient
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 def get_qqq_data(days=60):
-    """Fetch QQQ historical data from Yahoo Finance."""
+    """Fetch QQQ historical data from Polygon.io API."""
     try:
-        qqq = yf.Ticker("QQQ")
-        # Get data for the last 60 trading days (to calculate 50-day MA)
+        # Get API key from environment
+        api_key = os.getenv("POLYGON_API_KEY")
+        if not api_key:
+            print("❌ Error: POLYGON_API_KEY not found in environment variables.")
+            sys.exit(1)
+
+        # Initialize Polygon client
+        client = RESTClient(api_key)
+
+        # Calculate date range (extra days for weekends/holidays)
         end_date = datetime.now()
-        start_date = end_date - timedelta(
-            days=days * 2
-        )  # Extra days for weekends/holidays
+        start_date = end_date - timedelta(days=days * 2)
 
-        data = qqq.history(start=start_date, end=end_date, interval="1d")
-        return data
-    except Exception as e:
-        print(f"Error fetching QQQ data from Yahoo Finance: {e}")
-        print("Falling back to local database...")
-        return get_qqq_data_from_db()
+        # Format dates for Polygon API (YYYY-MM-DD)
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
 
-
-def get_qqq_data_from_db():
-    """Fallback: Get QQQ data from local database."""
-    try:
-        db_path = "stocks.db"
-        if not os.path.exists(db_path):
-            print("Error: stocks.db not found. Please run data collection first.")
-            sys.exit(1)
-
-        conn = sqlite3.connect(db_path)
-        df = pd.read_sql_query(
-            "SELECT date, close FROM aggregates WHERE ticker='QQQ' ORDER BY date DESC LIMIT 60",
-            conn,
+        # Fetch daily aggregates from Polygon
+        aggs = client.get_aggs(
+            ticker="QQQ",
+            multiplier=1,
+            timespan="day",
+            from_=start_str,
+            to=end_str,
+            limit=50000,  # Get plenty of data
         )
-        conn.close()
 
+        # Convert to DataFrame
+        data = []
+        for agg in aggs:
+            data.append(
+                {
+                    "Date": pd.Timestamp.fromtimestamp(
+                        agg.timestamp / 1000
+                    ),  # Convert from milliseconds
+                    "Open": agg.open,
+                    "High": agg.high,
+                    "Low": agg.low,
+                    "Close": agg.close,
+                    "Volume": agg.volume,
+                }
+            )
+
+        df = pd.DataFrame(data)
         if df.empty:
-            print("Error: No QQQ data in database.")
+            print("❌ Error: No data returned from Polygon API.")
             sys.exit(1)
 
-        # Convert to format expected by calculation
-        df["Date"] = pd.to_datetime(df["date"])
+        # Set Date as index and sort
         df.set_index("Date", inplace=True)
-        df = df.rename(columns={"close": "Close"})
-        return df.sort_index()
+        df = df.sort_index()
+
+        return df
+
     except Exception as e:
-        print(f"Error reading from database: {e}")
+        print(f"❌ Error fetching QQQ data from Polygon.io: {e}")
         sys.exit(1)
 
 
@@ -107,8 +125,11 @@ def calculate_target_allocation(qqq_data):
         return None, None
 
 
-def get_current_positions():
+def get_current_positions(skip_portfolio=False):
     """Optionally get current positions from user input."""
+    if skip_portfolio:
+        return None
+
     print("\n" + "=" * 50)
     print("CURRENT POSITION INPUT (Optional)")
     print("=" * 50)
@@ -201,6 +222,15 @@ def generate_trading_instructions(allocation, current_positions=None):
 
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Daily 50-Day MA Strategy Calculator")
+    parser.add_argument(
+        "--skip-portfolio",
+        action="store_true",
+        help="Skip portfolio value input (for automated/CI use)",
+    )
+    args = parser.parse_args()
+
     print("🚀 Daily 50-Day MA Strategy Calculator")
     print("=" * 50)
 
@@ -237,7 +267,7 @@ def main():
     print(f"SQQQ: {allocation['sqqq_pct']:.1%}")
 
     # Get current positions and generate instructions
-    current_positions = get_current_positions()
+    current_positions = get_current_positions(skip_portfolio=args.skip_portfolio)
     if current_positions:
         generate_trading_instructions(allocation, current_positions)
 
@@ -253,19 +283,21 @@ def main():
         f"Target: {allocation['tqqq_pct']:.1%} TQQQ / {allocation['sqqq_pct']:.1%} SQQQ"
     )
 
-    print("\n💡 Remember:")
-    print("• Only trade if allocation differs by more than 2-3%")
-    print("• Consider transaction costs ($0-5 per trade)")
-    print("• This is not financial advice - DYOR!")
+    if not args.skip_portfolio:
+        print("\n💡 Remember:")
+        print("• Only trade if allocation differs by more than 2-3%")
+        print("• Consider transaction costs ($0-5 per trade)")
+        print("• This is not financial advice - DYOR!")
 
 
 if __name__ == "__main__":
-    # Check if yfinance is available
+    # Check if required packages are available
     try:
-        import yfinance as yf
-    except ImportError:
-        print("❌ Error: yfinance not installed.")
-        print("Install with: pip install yfinance")
+        from polygon import RESTClient
+        from dotenv import load_dotenv
+    except ImportError as e:
+        print(f"❌ Error: Missing required package - {e}")
+        print("Install with: pip install polygon-api-client python-dotenv")
         sys.exit(1)
 
     main()

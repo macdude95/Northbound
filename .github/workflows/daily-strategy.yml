@@ -26,12 +26,11 @@ jobs:
 
       - name: Run strategy script
         id: strategy
+        env:
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
           # Run the strategy script and capture output
-          output=$(python daily_strategy.py << 'EOF'
-
-          EOF
-          2>&1)
+          output=$(python daily_strategy.py --skip-portfolio 2>&1)
 
           # Extract the key allocation line
           allocation=$(echo "$output" | grep "Target Allocation:" | head -1)
@@ -64,8 +63,7 @@ jobs:
           Full Output:
           ${{ steps.strategy.outputs.full_output }}"
 
-          # Send both SMS and email notifications
-          echo "$BODY" | mail -s "$SUBJECT" ${{ secrets.PHONE_NUMBER }}
+          # Send email notification
           echo "$BODY" | mail -s "$SUBJECT" ${{ secrets.EMAIL_ADDRESS }}
 
       - name: Log results

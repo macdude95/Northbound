@@ -25,22 +25,15 @@ git push origin main
 
 **Add these two secrets:**
 
-**Secret 1 - SMS:**
+**Secret 1 - Polygon API Key:**
 
-- **Name:** `PHONE_NUMBER`
-- **Value:** Your phone number + carrier gateway (e.g., `1234567890@tmomail.net`)
+- **Name:** `POLYGON_API_KEY`
+- **Value:** Your Polygon.io API key (get from https://polygon.io/)
 
 **Secret 2 - Email:**
 
 - **Name:** `EMAIL_ADDRESS`
 - **Value:** Your email address (e.g., `yourname@gmail.com`)
-
-**SMS Carrier Examples:**
-
-- **AT&T:** `1234567890@txt.att.net`
-- **Verizon:** `1234567890@vtext.com`
-- **T-Mobile:** `1234567890@tmomail.net`
-- **Sprint:** `1234567890@messaging.sprintpcs.com`
 
 ## 🧪 Test the Setup
 
@@ -50,7 +43,19 @@ git push origin main
 2. **Click "Actions" tab**
 3. **Click "Daily Strategy Alert"**
 4. **Click "Run workflow" button**
-5. **Check your phone for SMS notification**
+5. **Check your email** for the strategy notification
+
+### Local Testing:
+
+You can also test the script locally:
+
+```bash
+# Interactive mode (with portfolio input)
+python daily_strategy.py
+
+# Automated mode (skip portfolio input)
+python daily_strategy.py --skip-portfolio
+```
 
 ### Check Logs:
 
@@ -64,9 +69,9 @@ git push origin main
 - **Timezone:** Automatically adjusts for daylight saving
 - **Manual trigger:** "Run workflow" button for testing
 
-## 📱 Notification Format
+## 📧 Notification Format
 
-You'll receive **both SMS and email** notifications with the same content:
+You'll receive **email notifications** with the strategy results:
 
 ```
 Daily Strategy - 2025-12-28
@@ -78,10 +83,10 @@ Full Output:
 
 ## 🛠️ Troubleshooting
 
-### No SMS Received:
+### No Email Received:
 
-1. **Verify phone number/carrier** in workflow file
-2. **Check spam folder** (sometimes goes there)
+1. **Check spam/junk folder** (automated emails often go there)
+2. **Verify EMAIL_ADDRESS secret** is correct
 3. **Test with manual workflow run**
 4. **Check Actions logs** for email sending errors
 
@@ -110,8 +115,8 @@ Edit the cron schedule in `.github/workflows/daily-strategy.yml`:
 ### Add More Notifications:
 
 ```yaml
-# Send to multiple numbers
-echo "$BODY" | mail -s "$SUBJECT" phone1@carrier.com phone2@carrier.com
+# Send to multiple email addresses
+echo "$BODY" | mail -s "$SUBJECT" email1@example.com email2@example.com
 ```
 
 ### Custom Logic:
@@ -121,14 +126,14 @@ Modify the notification step to add custom filtering or alerts.
 ## 💰 Cost Summary
 
 - **GitHub Actions:** Free (2,000 minutes/month)
-- **SMS:** Free (email-to-SMS gateway)
+- **Email notifications:** Free
 - **Total:** $0/month
 
 ## ✅ Success Checklist
 
 - [ ] Code pushed to GitHub
-- [ ] PHONE_NUMBER and EMAIL_ADDRESS secrets configured
+- [ ] POLYGON_API_KEY and EMAIL_ADDRESS secrets configured
 - [ ] Manual test run successful
-- [ ] SMS and email notifications received
+- [ ] Email notifications received
 
 Once set up, you'll get automated daily notifications every weekday morning!
