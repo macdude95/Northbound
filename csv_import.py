@@ -1,5 +1,6 @@
 import csv
 import sqlite3
+import sys
 from datetime import datetime
 
 
@@ -63,10 +64,10 @@ def import_csv_to_db(csv_file_path, ticker="QQQ"):
 
                 # Parse OHLC values
                 try:
-                    open_val = float(open_str) if open_str else None
-                    high_val = float(high_str) if high_str else None
-                    low_val = float(low_str) if low_str else None
-                    close_val = float(price_str) if price_str else None
+                    open_val = float(open_str.replace(",", "")) if open_str else None
+                    high_val = float(high_str.replace(",", "")) if high_str else None
+                    low_val = float(low_str.replace(",", "")) if low_str else None
+                    close_val = float(price_str.replace(",", "")) if price_str else None
                     volume_val = parse_volume(vol_str)
                 except ValueError as e:
                     print(f"Error parsing values for date {date_str}: {e}")
@@ -116,8 +117,13 @@ def import_csv_to_db(csv_file_path, ticker="QQQ"):
 
 
 def main():
-    csv_path = "/Users/michaelcantrell/Downloads/QQQ ETF Stock Price History (1).csv"
-    import_csv_to_db(csv_path, "QQQ")
+    if len(sys.argv) != 3:
+        print("Usage: python csv_import.py <TICKER> <CSV_PATH>")
+        sys.exit(1)
+
+    ticker = sys.argv[1].upper()
+    csv_path = sys.argv[2]
+    import_csv_to_db(csv_path, ticker)
 
 
 if __name__ == "__main__":
