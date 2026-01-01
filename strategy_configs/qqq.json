@@ -1,0 +1,10 @@
+{
+    "name": "QQQ Buy and Hold",
+    "underlying_symbol": "QQQ",
+    "rules": [
+      {
+        "ticker": "QQQ"
+      }
+    ]
+}
+  
