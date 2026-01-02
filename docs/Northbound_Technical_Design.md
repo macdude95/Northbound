@@ -12,12 +12,12 @@ External Data Sources ──► Downloads/Files ──► Polygon.io API
        │                        │                        │
        ▼                        ▼                        ▼
 dataset_importer.py ──────────────────────────────────► data_manager.py
-• Import/clean        datasets/real_tickers/           • Backfill API
+• Import/clean        data/real_tickers/           • Backfill API
 • Format convert      *.csv                            • Gap detection
 • ~/Downloads                                           • Rate limiting
        │                                                      │
        ▼                                                      ▼
-datasets/real_tickers/ ◄── configs/*.json ───► run_simulation.py
+data/real_tickers/ ◄── configs/*.json ───► run_simulation.py
 *.csv (initial)             (strategy configs)    • Main interface
                                                   • Orchestrates backtesting
                                                   • Generates visualizations
@@ -26,7 +26,7 @@ datasets/real_tickers/ ◄── configs/*.json ───► run_simulation.py
                                     ┌─────────────────┬─────────────────┐
                                     │                 │                 │
                                     ▼                 ▼                 ▼
-                            datasets/strategy_allocations/ datasets/simulations/ visualizer.py
+                            data/simulations/ visualizer.py
                             *.csv (allocations)  {date}_{capital}/      • Plotly charts
                                                ├── *.csv (P&L)      • Comparisons
                                                └── *.html           • Interactive
@@ -36,16 +36,16 @@ datasets/real_tickers/ ◄── configs/*.json ───► run_simulation.py
 
 ### Data Flow:
 
-1. **dataset_importer.py** → `datasets/real_tickers/` (initial data import)
-2. **data_manager.py** → `datasets/real_tickers/` (data updates)
-3. **run_simulation.py** ← `configs/` + `datasets/real_tickers/`
-4. **run_simulation.py** → calls `backtester.py` → `datasets/strategy_allocations/` + `datasets/simulations/`
+1. **dataset_importer.py** → `data/real_tickers/` (initial data import)
+2. **data_manager.py** → `data/real_tickers/` (data updates)
+3. **run_simulation.py** ← `configs/` + `data/real_tickers/`
+4. **run_simulation.py** → calls `backtester.py` → `data/simulations/`
 5. **run_simulation.py** → calls `visualizer.py` → saves HTML in simulation subfolders
 
 ### Dependencies:
 
-- **dataset_importer**: Reads from `~/Downloads/`, writes to `datasets/real_tickers/`
-- **data_manager**: Requires Polygon.io API key, updates `datasets/real_tickers/`
+- **dataset_importer**: Reads from `~/Downloads/`, writes to `data/real_tickers/`
+- **data_manager**: Requires Polygon.io API key, updates `data/real_tickers/`
 - **run_simulation.py**: Main orchestrator, calls backtester and visualizer classes
 - **backtester.py**: Core backtesting engine (no CLI)
 - **visualizer.py**: Chart generation engine (no CLI)
@@ -91,13 +91,10 @@ datasets/real_tickers/ ◄── configs/*.json ───► run_simulation.py
 
 ```
 project/
-├── datasets/
+├── data/
 │   ├── real_tickers/
 │   │   ├── AAPL.csv
 │   │   └── QQQ.csv
-│   ├── strategy_allocations/
-│   │   ├── strategy1.csv
-│   │   └── strategy2.csv
 │   └── simulations/
 │       ├── 2020-01-01_2025-12-31_10000/
 │       │   ├── strategy1.csv

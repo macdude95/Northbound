@@ -212,9 +212,9 @@ class PortfolioSimulator:
 class Backtester:
     """Main backtesting engine."""
 
-    def __init__(self, config_path: str, datasets_dir: str = "datasets"):
+    def __init__(self, config_path: str, data_dir: str = "data"):
         self.config_path = config_path
-        self.datasets_dir = datasets_dir
+        self.data_dir = data_dir
         self.config = None
         self.rule_engine = None
         self.portfolio = None
@@ -272,7 +272,7 @@ class Backtester:
         # Check underlying symbol exists
         underlying_symbol = config["underlying_symbol"]
         ticker_path = os.path.join(
-            self.datasets_dir, "real_tickers", f"{underlying_symbol}.csv"
+            self.data_dir, "real_tickers", f"{underlying_symbol}.csv"
         )
         if not os.path.exists(ticker_path):
             raise ValueError(
@@ -299,9 +299,9 @@ class Backtester:
                     ticker = rule[ticker_field]
                     if ticker != "cash":
                         all_tickers.add(ticker)
-                        # Check ticker exists in datasets
+                        # Check ticker exists in data
                         ticker_path = os.path.join(
-                            self.datasets_dir, "real_tickers", f"{ticker}.csv"
+                            self.data_dir, "real_tickers", f"{ticker}.csv"
                         )
                         if not os.path.exists(ticker_path):
                             raise ValueError(
@@ -362,7 +362,7 @@ class Backtester:
 
         # Load underlying data
         underlying_path = os.path.join(
-            self.datasets_dir, "real_tickers", f"{self.config['underlying_symbol']}.csv"
+            self.data_dir, "real_tickers", f"{self.config['underlying_symbol']}.csv"
         )
         if os.path.exists(underlying_path):
             data[self.config["underlying_symbol"]] = pd.read_csv(underlying_path)
@@ -395,7 +395,7 @@ class Backtester:
         for ticker in allocated_tickers:
             if ticker not in data:
                 ticker_path = os.path.join(
-                    self.datasets_dir, "real_tickers", f"{ticker}.csv"
+                    self.data_dir, "real_tickers", f"{ticker}.csv"
                 )
                 if os.path.exists(ticker_path):
                     data[ticker] = pd.read_csv(ticker_path)

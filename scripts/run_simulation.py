@@ -38,7 +38,7 @@ def run_multiple_strategies(
     end_str = end_date or "full"
     capital_str = str(int(capital))
     subfolder_name = f"{start_str}_{end_str}_{capital_str}"
-    subfolder_path = f"datasets/simulations/{subfolder_name}"
+    subfolder_path = f"data/simulations/{subfolder_name}"
 
     print(f"Running simulations in: {subfolder_path}")
 

@@ -83,6 +83,57 @@ def format_allocation_table(
     else:
         output.append("(No allocations)")
 
+    output.append("")
+    output.append(
+        "📱 Use Calculator: Open portfolio-calculator/index.html or deploy to GitHub Pages for mobile rebalancing"
+    )
+
+    return "\n".join(output)
+
+
+def format_strategy_breakdown(
+    strategy_allocations: Dict[str, Dict[str, float]],
+) -> str:
+    """
+    Format concise strategy breakdown for email.
+
+    Args:
+        strategy_allocations: Dict of strategy_name -> {ticker: percentage}
+
+    Returns:
+        Formatted breakdown string
+    """
+    output = []
+
+    for strategy_name, allocation in strategy_allocations.items():
+        # Find the percentage this strategy gets in portfolio
+        portfolio_pct = None
+        for arg in sys.argv[1:]:
+            if ":" in arg:
+                strat, pct = parse_strategy_allocation(arg)
+                if strat == strategy_name:
+                    portfolio_pct = pct
+                    break
+
+        if portfolio_pct is not None and allocation:
+            # Format strategy name nicely
+            display_name = (
+                strategy_name.replace("_", " ")
+                .replace("qqq", "QQQ")
+                .replace("momentum", "Momentum")
+                .title()
+            )
+            # Fix the title case for "Qqq" -> "QQQ"
+            display_name = display_name.replace("Qqq", "QQQ")
+
+            # Format allocation summary
+            alloc_parts = []
+            for ticker, percentage in sorted(allocation.items()):
+                alloc_parts.append(f"{ticker} {percentage:.0f}%")
+
+            alloc_str = ", ".join(alloc_parts)
+            output.append(f"• {display_name} ({portfolio_pct}%): {alloc_str}")
+
     return "\n".join(output)
 
 
@@ -90,15 +141,23 @@ def main():
     """Main function to get current allocations."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python3 scripts/get_allocations.py strategy1:percentage strategy2:percentage ..."
+            "Usage: python3 scripts/get_allocations.py [--breakdown] strategy1:percentage strategy2:percentage ..."
         )
         print(
             "Example: python3 scripts/get_allocations.py qqq_momentum_simple:60 qqq_momentum_gradient:40"
+        )
+        print(
+            "Example: python3 scripts/get_allocations.py --breakdown qqq_momentum_simple:60 qqq_momentum_gradient:40"
         )
         sys.exit(1)
 
     try:
         from northbound import AllocationCalculator
+
+        # Check for --breakdown flag
+        breakdown_only = "--breakdown" in sys.argv
+        if breakdown_only:
+            sys.argv.remove("--breakdown")
 
         # Parse command line arguments
         strategy_allocations = {}
@@ -132,9 +191,14 @@ def main():
             strategy_allocations
         )
 
-        # Display results
-        output = format_allocation_table(individual_allocations, final_allocation)
-        print(output)
+        if breakdown_only:
+            # Output only the strategy breakdown
+            breakdown = format_strategy_breakdown(individual_allocations)
+            print(breakdown)
+        else:
+            # Display full results
+            output = format_allocation_table(individual_allocations, final_allocation)
+            print(output)
 
     except Exception as e:
         print(f"Error: {e}")

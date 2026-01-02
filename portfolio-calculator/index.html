@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Portfolio Rebalancer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>📊 Portfolio Rebalancer</h1>
+
+      <div class="input-section">
+        <h2>Target Allocations</h2>
+
+        <div class="input-method">
+          <div class="method-option">
+            <h3>Option 1: Copy from Email</h3>
+            <textarea
+              id="emailInput"
+              placeholder="Paste allocation block from email here...
+
+Example:
+SQQQ: 81.34%
+TQQQ: 18.66%"
+            ></textarea>
+            <button onclick="parseEmailBlock()">📋 Parse from Email</button>
+            <div
+              id="parseStatus"
+              class="parse-status"
+              style="display: none"
+            ></div>
+          </div>
+
+          <div class="method-option">
+            <h3>Option 2: Manual Input</h3>
+            <div id="manualInputs" class="allocation-inputs">
+              <!-- Dynamic inputs will be added here -->
+            </div>
+            <button onclick="addManualInput()">➕ Add Position</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-section">
+        <h2>Current Holdings</h2>
+        <div id="holdingsInputs" class="holdings-inputs">
+          <!-- Current holdings inputs will be added here -->
+        </div>
+        <button onclick="addHoldingInput()">➕ Add Holding</button>
+      </div>
+
+      <div class="calculate-section">
+        <button onclick="calculateRebalancing()" class="calculate-btn">
+          📊 Calculate Rebalancing
+        </button>
+      </div>
+
+      <div class="results-section">
+        <div id="results" class="results" style="display: none">
+          <h2>Results</h2>
+          <div id="trades"></div>
+          <div id="finalBalances"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="calculator.js"></script>
+  </body>
+</html>

@@ -206,12 +206,12 @@ def check_data_gaps(ticker: str, csv_path: str) -> tuple[bool, str]:
     return False, ""
 
 
-def backfill_all_tickers(datasets_dir: str, tickers: list[str] = None) -> None:
+def backfill_all_tickers(data_dir: str, tickers: list[str] = None) -> None:
     """
-    Backfill all tickers in the datasets directory.
+    Backfill all tickers in the data directory.
 
     Args:
-        datasets_dir: Path to datasets directory
+        data_dir: Path to data directory
         tickers: List of tickers to backfill (if None, finds all CSV files)
     """
     if not POLYGON_API_KEY:
@@ -220,7 +220,7 @@ def backfill_all_tickers(datasets_dir: str, tickers: list[str] = None) -> None:
 
     client = PolygonClient(POLYGON_API_KEY)
 
-    real_tickers_dir = os.path.join(datasets_dir, "real_tickers")
+    real_tickers_dir = os.path.join(data_dir, "real_tickers")
 
     if tickers is None:
         # Find all CSV files
@@ -256,10 +256,10 @@ if __name__ == "__main__":
         description="Backfill historical data using Polygon.io API"
     )
     parser.add_argument(
-        "datasets_dir",
+        "data_dir",
         nargs="?",
-        default="datasets",
-        help="Path to datasets directory (default: datasets)",
+        default="data",
+        help="Path to data directory (default: data)",
     )
     parser.add_argument(
         "--tickers", nargs="*", help="Specific tickers to backfill (default: all)"
@@ -267,4 +267,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    backfill_all_tickers(args.datasets_dir, args.tickers)
+    backfill_all_tickers(args.data_dir, args.tickers)

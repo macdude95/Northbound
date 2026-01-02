@@ -160,8 +160,8 @@ class RuleEngine:
 class AllocationCalculator:
     """Calculates live portfolio allocations for trading strategies."""
 
-    def __init__(self, datasets_dir: str = "datasets"):
-        self.datasets_dir = datasets_dir
+    def __init__(self, data_dir: str = "data"):
+        self.data_dir = data_dir
 
     def load_strategy_config(self, config_path: str) -> Dict[str, Any]:
         """Load and validate strategy configuration."""
@@ -189,9 +189,7 @@ class AllocationCalculator:
         prices = {}
 
         for ticker in tickers:
-            ticker_path = os.path.join(
-                self.datasets_dir, "real_tickers", f"{ticker}.csv"
-            )
+            ticker_path = os.path.join(self.data_dir, "real_tickers", f"{ticker}.csv")
 
             if os.path.exists(ticker_path):
                 df = pd.read_csv(ticker_path)
@@ -215,7 +213,7 @@ class AllocationCalculator:
         Returns:
             Series of closing prices
         """
-        ticker_path = os.path.join(self.datasets_dir, "real_tickers", f"{ticker}.csv")
+        ticker_path = os.path.join(self.data_dir, "real_tickers", f"{ticker}.csv")
 
         if os.path.exists(ticker_path):
             df = pd.read_csv(ticker_path)

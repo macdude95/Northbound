@@ -19,15 +19,14 @@ pip install -r requirements.txt
 POLYGON_API_KEY=your_api_key_here
 ```
 
-3. Import base datasets:
-   Place CSV files in `datasets/real_tickers/` or use `src/dataset_importer.py` programmatically
+3. Import base data:
+   Place CSV files in `data/real_tickers/` or use `scripts/dataset_importer.py` programmatically
 
 ## Project Structure
 
 ```
-├── datasets/
+├── data/
 │   ├── real_tickers/     # Historical price data (CSV)
-│   ├── strategy_allocations/ # Strategy allocation decisions (CSV)
 │   └── simulations/      # Portfolio simulation results (CSV)
 │       └── {date_range}_{capital}/ # Subfolders with simulation + HTML files
 ├── scripts/              # Command-line interface scripts
@@ -39,6 +38,10 @@ POLYGON_API_KEY=your_api_key_here
 │   ├── visualizer.py     # Performance visualization
 │   └── data_manager.py   # Polygon API integration
 ├── strategy_configs/     # Strategy configuration files (JSON)
+├── portfolio-calculator/ # Mobile portfolio rebalancing calculator
+│   ├── index.html        # Calculator interface
+│   ├── calculator.js     # Calculation logic
+│   └── styles.css        # Mobile styling
 ├── docs/
 │   ├── Northbound_Product_Requirements.md # Product requirements
 │   └── Northbound_Technical_Design.md     # Technical implementation details
@@ -66,7 +69,7 @@ source venv/bin/activate
 python3 scripts/run_simulation.py qqq qqq_momentum_simple \
     --start-date 2020-06-01 --end-date 2025-06-30
 
-# All files saved in: datasets/simulations/2020-06-01_2025-06-30_10000/
+# All files saved in: data/simulations/2020-06-01_2025-06-30_10000/
 ```
 
 **Arguments**:
@@ -98,6 +101,29 @@ python3 scripts/get_allocations.py qqq:100
 
 **Outputs**: Formatted table showing individual strategy allocations and final portfolio allocation
 
+#### Portfolio Rebalancing Calculator
+
+**Purpose**: Mobile-friendly calculator to determine buy/sell amounts for portfolio rebalancing
+
+**Location**: `portfolio-calculator/index.html` (can be deployed to GitHub Pages)
+
+**Features**:
+
+- Copy/paste allocations directly from daily emails
+- Input current holdings in dollars
+- Calculates exact trade amounts needed
+- Shows final expected portfolio balances
+- Mobile-optimized interface
+- Works offline once loaded
+
+**Usage**:
+
+1. Open `portfolio-calculator/index.html` in browser or deploy to GitHub Pages
+2. Copy allocation block from daily email
+3. Paste into "Copy from Email" section
+4. Input current dollar holdings
+5. Click "Calculate Rebalancing"
+
 #### Automated Daily Emails
 
 **Purpose**: Get daily portfolio allocation emails automatically via GitHub Actions
@@ -113,7 +139,7 @@ python3 scripts/get_allocations.py qqq:100
 
 #### Data Management
 
-**Import Data**: Use `src/dataset_importer.py` programmatically or manually place CSV files in `datasets/real_tickers/`
+**Import Data**: Use `scripts/dataset_importer.py` programmatically or manually place CSV files in `data/real_tickers/`
 
 **Backfill Data**: Use `src/data_manager.py` programmatically to update historical data via Polygon.io API
 
@@ -127,7 +153,7 @@ from northbound import Backtester, PerformanceVisualizer, backfill_all_tickers
 
 # Dataset importing (from scripts)
 from scripts.dataset_importer import import_single_dataset
-import_single_dataset("/path/to/data.csv", "TICKER", "datasets")
+import_single_dataset("/path/to/data.csv", "TICKER", "data")
 
 # Backtesting
 backtester = Backtester("strategy_configs/strategy.json")
@@ -135,11 +161,11 @@ results = backtester.run_simulation(start_date="2018-01-01")
 backtester.save_results(results, "results.csv")
 
 # Data backfilling
-backfill_all_tickers("datasets")
+backfill_all_tickers("data")
 
 # Visualization
 viz = PerformanceVisualizer()
-viz.compare_strategies(["results.csv"], "datasets/real_tickers/SPY.csv")
+viz.compare_strategies(["results.csv"], "data/real_tickers/SPY.csv")
 ```
 
 ## Strategy Configuration

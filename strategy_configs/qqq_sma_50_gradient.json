@@ -1,0 +1,25 @@
+{
+  "name": "QQQ 50 Day SMA w/ Gradient",
+  "underlying_symbol": "QQQ",
+  "calculation": {
+    "type": "SMA",
+    "period": 50
+  },
+  "rules": [
+    {
+      "max_threshold": -0.05,
+      "ticker": "SQQQ"
+    },
+    {
+      "min_threshold": -0.05,
+      "max_threshold": 0.05,
+      "scaling_function": "linear",
+      "ticker_min": "SQQQ",
+      "ticker_max": "TQQQ"
+    },
+    {
+      "min_threshold": 0.05,
+      "ticker": "cash"
+    }
+  ]
+}

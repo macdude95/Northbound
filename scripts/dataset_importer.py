@@ -62,9 +62,9 @@ def process_investing_csv(input_path: str, output_path: str, ticker: str):
     print(f"Processed {ticker}: {len(df)} rows saved to {output_path}")
 
 
-def import_single_dataset(input_file: str, ticker: str, datasets_dir: str):
+def import_single_dataset(input_file: str, ticker: str, data_dir: str):
     """Import and process a single CSV dataset."""
-    output_path = os.path.join(datasets_dir, "real_tickers", f"{ticker}.csv")
+    output_path = os.path.join(data_dir, "real_tickers", f"{ticker}.csv")
 
     if os.path.exists(input_file):
         # Automatically merge if ticker data already exists, otherwise create new
@@ -155,5 +155,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Process the specified dataset
-    datasets_dir = "datasets"
-    import_single_dataset(args.input_file, args.ticker, datasets_dir)
+    data_dir = "data"
+    import_single_dataset(args.input_file, args.ticker, data_dir)
