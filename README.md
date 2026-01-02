@@ -98,6 +98,19 @@ python3 scripts/get_allocations.py qqq:100
 
 **Outputs**: Formatted table showing individual strategy allocations and final portfolio allocation
 
+#### Automated Daily Emails
+
+**Purpose**: Get daily portfolio allocation emails automatically via GitHub Actions
+
+**Setup**: Follow `GitHub_Actions_Email_Setup.md` for complete instructions
+
+**Features**:
+
+- Runs Monday-Friday at NYSE open (9:30 AM ET)
+- Emails personalized allocation recommendations
+- Completely free using GitHub Actions
+- Configurable strategies and recipients
+
 #### Data Management
 
 **Import Data**: Use `src/dataset_importer.py` programmatically or manually place CSV files in `datasets/real_tickers/`
