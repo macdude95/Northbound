@@ -78,6 +78,26 @@ python3 scripts/run_simulation.py qqq qqq_momentum_simple \
 
 **Outputs**: Creates subfolder with all strategy CSVs and comprehensive HTML visualization
 
+#### Get Current Allocations
+
+**Purpose**: Calculate current portfolio allocations for live trading (run daily)
+
+**Command**:
+
+```bash
+# Get allocations for multiple strategies with portfolio percentages
+python3 scripts/get_allocations.py qqq_momentum_simple:60 qqq_momentum_gradient:40
+
+# Single strategy
+python3 scripts/get_allocations.py qqq:100
+```
+
+**Arguments**:
+
+- `strategy:percentage`: Strategy name and portfolio percentage (required, multiple allowed)
+
+**Outputs**: Formatted table showing individual strategy allocations and final portfolio allocation
+
 #### Data Management
 
 **Import Data**: Use `src/dataset_importer.py` programmatically or manually place CSV files in `datasets/real_tickers/`
