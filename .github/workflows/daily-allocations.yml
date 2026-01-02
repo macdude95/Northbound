@@ -34,16 +34,26 @@ jobs:
         env:
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
+          # Generate strategy allocation string from portfolio config
+          strategy_allocation=$(python3 -c "
+          import json
+          with open('portfolio_configs/current_portfolio.json', 'r') as f:
+              config = json.load(f)
+          strategies = config['strategies']
+          allocation_str = ' '.join([f'{strategy}:{pct}' for strategy, pct in strategies.items()])
+          print(allocation_str)
+          ")
+
           # Get strategy breakdown for email
-          breakdown=$(python scripts/get_allocations.py --breakdown qqq_sma_50:60 qqq_sma_50_gradient:40 2>&1)
+          breakdown=$(python scripts/get_allocations.py --breakdown $strategy_allocation 2>&1)
           echo "breakdown<<EOF" >> $GITHUB_OUTPUT
           echo "$breakdown" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
           # Get full allocation data for copy/paste
-          summary=$(python scripts/get_allocations.py qqq_sma_50:60 qqq_sma_50_gradient:40 2>&1 | grep "^- " | sed 's/^- //' | tr '\n' '\n')
+          summary=$(python scripts/get_allocations.py $strategy_allocation 2>&1 | grep "^- " | sed 's/^- //' | tr '\n' '\n')
           if [ -z "$summary" ]; then
-            summary="SQQQ: 50.00%\\nTQQQ: 50.00%"
+            summary="❌ ALLOCATION CALCULATION FAILED - MANUAL CHECK REQUIRED\\nError: Unable to calculate portfolio allocations. Please check system manually."
           fi
           echo "summary<<EOF" >> $GITHUB_OUTPUT
           echo "$summary" >> $GITHUB_OUTPUT

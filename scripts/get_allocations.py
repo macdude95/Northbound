@@ -93,6 +93,7 @@ def format_allocation_table(
 
 def format_strategy_breakdown(
     strategy_allocations: Dict[str, Dict[str, float]],
+    strategy_portfolio_percentages: Dict[str, float] = None,
 ) -> str:
     """
     Format concise strategy breakdown for email.
@@ -108,12 +109,16 @@ def format_strategy_breakdown(
     for strategy_name, allocation in strategy_allocations.items():
         # Find the percentage this strategy gets in portfolio
         portfolio_pct = None
-        for arg in sys.argv[1:]:
-            if ":" in arg:
-                strat, pct = parse_strategy_allocation(arg)
-                if strat == strategy_name:
-                    portfolio_pct = pct
-                    break
+        if strategy_portfolio_percentages:
+            portfolio_pct = strategy_portfolio_percentages.get(strategy_name)
+        else:
+            # Fallback to parsing from command line args
+            for arg in sys.argv[1:]:
+                if ":" in arg:
+                    strat, pct = parse_strategy_allocation(arg)
+                    if strat == strategy_name:
+                        portfolio_pct = pct
+                        break
 
         if portfolio_pct is not None and allocation:
             # Format strategy name nicely
@@ -137,34 +142,71 @@ def format_strategy_breakdown(
     return "\n".join(output)
 
 
+def load_portfolio_config(
+    config_path: str = "portfolio_configs/current_portfolio.json",
+) -> Dict[str, float]:
+    """
+    Load strategy allocations from portfolio configuration file.
+
+    Args:
+        config_path: Path to portfolio configuration JSON file
+
+    Returns:
+        Dict of strategy_name -> percentage
+    """
+    try:
+        import json
+
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        return config.get("strategies", {})
+    except FileNotFoundError:
+        print(f"Portfolio config file not found: {config_path}")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error parsing portfolio config: {e}")
+        return {}
+
+
 def main():
     """Main function to get current allocations."""
     if len(sys.argv) < 2:
         print(
-            "Usage: python3 scripts/get_allocations.py [--breakdown] strategy1:percentage strategy2:percentage ..."
+            "Usage: python3 scripts/get_allocations.py [--breakdown] [--portfolio-config] strategy1:percentage strategy2:percentage ..."
         )
         print(
             "Example: python3 scripts/get_allocations.py qqq_momentum_simple:60 qqq_momentum_gradient:40"
         )
         print(
-            "Example: python3 scripts/get_allocations.py --breakdown qqq_momentum_simple:60 qqq_momentum_gradient:40"
+            "Example: python3 scripts/get_allocations.py --breakdown --portfolio-config"
         )
         sys.exit(1)
 
     try:
         from northbound import AllocationCalculator
 
-        # Check for --breakdown flag
+        # Check for flags
         breakdown_only = "--breakdown" in sys.argv
         if breakdown_only:
             sys.argv.remove("--breakdown")
 
-        # Parse command line arguments
+        use_portfolio_config = "--portfolio-config" in sys.argv
+        if use_portfolio_config:
+            sys.argv.remove("--portfolio-config")
+
+        # Load strategy allocations
         strategy_allocations = {}
-        for arg in sys.argv[1:]:
-            if ":" in arg:
-                strategy_name, percentage = parse_strategy_allocation(arg)
-                strategy_allocations[strategy_name] = percentage
+        if use_portfolio_config:
+            strategy_allocations = load_portfolio_config()
+            if not strategy_allocations:
+                print("Error: Could not load portfolio configuration")
+                sys.exit(1)
+        else:
+            # Parse command line arguments
+            for arg in sys.argv[1:]:
+                if ":" in arg:
+                    strategy_name, percentage = parse_strategy_allocation(arg)
+                    strategy_allocations[strategy_name] = percentage
 
         if not strategy_allocations:
             print("Error: No valid strategy:percentage arguments provided")
@@ -193,7 +235,9 @@ def main():
 
         if breakdown_only:
             # Output only the strategy breakdown
-            breakdown = format_strategy_breakdown(individual_allocations)
+            breakdown = format_strategy_breakdown(
+                individual_allocations, strategy_allocations
+            )
             print(breakdown)
         else:
             # Display full results

@@ -38,6 +38,7 @@ POLYGON_API_KEY=your_api_key_here
 │   ├── visualizer.py     # Performance visualization
 │   └── data_manager.py   # Polygon API integration
 ├── strategy_configs/     # Strategy configuration files (JSON)
+├── portfolio_configs/    # Portfolio configuration files (JSON)
 ├── portfolio-calculator/ # Mobile portfolio rebalancing calculator
 │   ├── index.html        # Calculator interface
 │   ├── calculator.js     # Calculation logic
@@ -88,8 +89,11 @@ python3 scripts/run_simulation.py qqq qqq_momentum_simple \
 **Command**:
 
 ```bash
+# Get allocations using portfolio configuration
+python3 scripts/get_allocations.py --portfolio-config
+
 # Get allocations for multiple strategies with portfolio percentages
-python3 scripts/get_allocations.py qqq_momentum_simple:60 qqq_momentum_gradient:40
+python3 scripts/get_allocations.py qqq_sma_50:60 qqq_sma_50_gradient:40
 
 # Single strategy
 python3 scripts/get_allocations.py qqq:100
@@ -97,7 +101,8 @@ python3 scripts/get_allocations.py qqq:100
 
 **Arguments**:
 
-- `strategy:percentage`: Strategy name and portfolio percentage (required, multiple allowed)
+- `--portfolio-config`: Use portfolio configuration from `portfolio_configs/current_portfolio.json`
+- `strategy:percentage`: Strategy name and portfolio percentage (required when not using --portfolio-config, multiple allowed)
 
 **Outputs**: Formatted table showing individual strategy allocations and final portfolio allocation
 

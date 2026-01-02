@@ -1,0 +1,6 @@
+{
+  "strategies": {
+    "qqq_sma_50": 70,
+    "qqq_sma_50_gradient": 30
+  }
+}
