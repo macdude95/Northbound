@@ -1,0 +1,18 @@
+{
+  "name": "QQQ 250 day SMA",
+  "underlying_symbol": "QQQ",
+  "calculation": {
+    "type": "SMA",
+    "period": 250
+  },
+  "rules": [
+    {
+      "max_threshold": 0,
+      "ticker": "SQQQ"
+    },
+    {
+      "min_threshold": 0,
+      "ticker": "TQQQ"
+    }
+  ]
+}
