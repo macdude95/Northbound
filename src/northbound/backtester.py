@@ -411,7 +411,10 @@ class Backtester:
         initial_capital: float = 10000.0,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Run the backtest simulation.
+        Run the backtest simulation with realistic next-day execution.
+
+        Signals are calculated using data available at end of day N-1,
+        and applied starting at the open of day N (removing look-ahead bias).
 
         Args:
             start_date: Start date for simulation (YYYY-MM-DD)
@@ -420,7 +423,7 @@ class Backtester:
 
         Returns:
             Tuple of (strategy_results, simulation_results)
-            - strategy_results: Full date range allocations
+            - strategy_results: Full date range allocations (decisions made on date shown)
             - simulation_results: Specified date range with portfolio state
         """
         if not self.config:
@@ -429,27 +432,19 @@ class Backtester:
         data = self.load_data()
         underlying_data = data[self.config["underlying_symbol"]]
 
-        # Calculate strategy allocations over FULL available data
+        # Calculate strategy allocations with realistic timing
+        # Decision made on day N uses data up to day N, applied on day N+1
         strategy_results = []
-        for idx, row in underlying_data.iterrows():
-            current_date = row["Date"]
+        for idx in range(len(underlying_data)):
+            current_date = underlying_data.iloc[idx]["Date"]
 
-            # Get prices for all tickers on this date
-            prices = {}
-            for ticker, df in data.items():
-                date_row = df[df["Date"] == current_date]
-                if not date_row.empty:
-                    prices[ticker] = float(date_row["Close"].iloc[0])
-
-            if not prices:
-                continue
-
-            # Evaluate rules for strategy allocation
+            # Use data up to current date to make allocation decision
+            # This allocation will be applied on the NEXT trading day
             target_allocation = self.rule_engine.evaluate_rules(underlying_data, idx)
 
             strategy_result = {
-                "Date": current_date,
-                "Allocation": target_allocation.copy(),
+                "Date": current_date,  # Date when decision is made
+                "Allocation": target_allocation.copy(),  # Allocation for NEXT day
             }
 
             strategy_results.append(strategy_result)
@@ -465,14 +460,14 @@ class Backtester:
 
         simulation_data = simulation_data.reset_index(drop=True)
 
-        # Run portfolio simulation over specified date range
+        # Run portfolio simulation with realistic execution timing
         self.portfolio = PortfolioSimulator(initial_capital)
 
         simulation_results = []
         previous_prices = {}
 
-        for idx, row in simulation_data.iterrows():
-            current_date = row["Date"]
+        for idx in range(len(simulation_data)):
+            current_date = simulation_data.iloc[idx]["Date"]
 
             # Get prices for all tickers on this date
             current_prices = {}
@@ -484,16 +479,18 @@ class Backtester:
             if not current_prices:
                 continue
 
-            # Get allocation for this date from strategy results
+            # Get allocation made on the PREVIOUS day (no look-ahead bias)
             date_allocation = {}
-            date_row = strategy_df[strategy_df["Date"] == current_date]
-            if not date_row.empty:
-                # Parse the JSON string back to dict
-                alloc_str = date_row["Allocation"].iloc[0]
-                if isinstance(alloc_str, str):
-                    date_allocation = eval(alloc_str)
-                else:
-                    date_allocation = alloc_str
+            if idx > 0:  # First day has no previous allocation
+                prev_date = simulation_data.iloc[idx - 1]["Date"]
+                prev_date_row = strategy_df[strategy_df["Date"] == prev_date]
+                if not prev_date_row.empty:
+                    # Parse the JSON string back to dict
+                    alloc_str = prev_date_row["Allocation"].iloc[0]
+                    if isinstance(alloc_str, str):
+                        date_allocation = eval(alloc_str)
+                    else:
+                        date_allocation = alloc_str
 
             # Calculate daily return using closing prices only
             daily_return = self.portfolio.calculate_daily_return(

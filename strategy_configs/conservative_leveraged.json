@@ -1,0 +1,24 @@
+{
+  "name": "Conservative Leveraged",
+  "underlying_symbol": "QQQ",
+  "calculation": {
+    "type": "SMA",
+    "period": 100
+  },
+  "rules": [
+    {
+      "max_threshold": -0.1,
+      "ticker": "cash"
+    },
+    {
+      "min_threshold": -0.1,
+      "max_threshold": 0.05,
+      "ticker_min": "QQQ",
+      "ticker_max": "TQQQ"
+    },
+    {
+      "min_threshold": 0.05,
+      "ticker": "TQQQ"
+    }
+  ]
+}

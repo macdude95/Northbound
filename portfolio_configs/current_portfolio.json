@@ -1,7 +1,7 @@
 {
   "strategies": {
-    "qqq_sma_10": 20,
-    "qqq_sma_5": 50,
-    "qqq_sma_50": 30
+    "conservative_leveraged": 40,
+    "adaptive_leverage": 50,
+    "tqqq": 10
   }
 }
