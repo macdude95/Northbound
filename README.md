@@ -2,6 +2,14 @@
 
 A comprehensive suite for developing, backtesting, and visualizing trading strategies using historical market data.
 
+## Inspiration
+
+This project was inspired by an interview with Mallik (@RealTQQQTrader), a systematic trader who specializes in leveraged ETF strategies. In the interview, Mallik discusses his trading philosophy and automated trading systems that operate without manual intervention.
+
+**Key Interview**: [Systematic Trading with Mallik](https://youtu.be/pBS5vrqrUjk?si=IvUNjqhRPm7ermRP) - Twitter: [@RealTQQQTrader](https://x.com/RealTQQQTrader)
+
+Mallik's automated system "whitelight" is available on Collective2: https://collective2.com/details/141158577
+
 ## Setup
 
 1. Create and activate virtual environment:

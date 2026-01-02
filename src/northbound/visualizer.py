@@ -100,8 +100,13 @@ class PerformanceVisualizer:
         normalize: bool,
         save_path: str = None,
     ) -> None:
-        """Create interactive plotly chart."""
+        """Create interactive plotly chart with toggle for different views."""
         fig = go.Figure()
+
+        # Store data for different view modes
+        portfolio_data = []
+        daily_returns_data = []
+        cumulative_returns_data = []
 
         for i, (df, label) in enumerate(zip(data_frames, labels)):
             if df.empty:
@@ -111,42 +116,181 @@ class PerformanceVisualizer:
 
             if "Portfolio_Value" in df.columns:
                 # Strategy results CSV
-                y_data = df["Portfolio_Value"]
-                title = "Portfolio Value Over Time"
-                y_label = "Portfolio Value ($)"
+                portfolio_values = df["Portfolio_Value"]
+
+                # Calculate daily returns
+                daily_returns = (
+                    portfolio_values.pct_change() * 100
+                )  # Convert to percentage
+
+                # Calculate cumulative returns
+                initial_value = portfolio_values.iloc[0]
+                cumulative_returns = (
+                    (portfolio_values - initial_value) / initial_value
+                ) * 100
+
+                portfolio_data.append((x_data, portfolio_values, label))
+                daily_returns_data.append((x_data, daily_returns, label))
+                cumulative_returns_data.append((x_data, cumulative_returns, label))
+
             elif "Close" in df.columns:
                 # Price data CSV
                 if normalize:
-                    y_data = self.normalize_prices(df, 100.0)
-                    title = "Normalized Performance (Starting at $100)"
-                    y_label = "Normalized Value"
-                else:
-                    y_data = df["Close"]
-                    title = "Price Over Time"
-                    y_label = "Price ($)"
-            else:
-                continue
+                    normalized_prices = self.normalize_prices(df, 100.0)
 
-            fig.add_trace(
-                go.Scatter(
-                    x=x_data,
-                    y=y_data,
-                    mode="lines",
-                    name=label,
-                    hovertemplate=f"{label}<br>Date: %{{x}}<br>Value: %{{y:.2f}}<extra></extra>",
-                )
+                    # Calculate daily returns for normalized data
+                    daily_returns = normalized_prices.pct_change() * 100
+
+                    # Calculate cumulative returns
+                    cumulative_returns = ((normalized_prices - 100.0) / 100.0) * 100
+
+                    portfolio_data.append((x_data, normalized_prices, label))
+                    daily_returns_data.append((x_data, daily_returns, label))
+                    cumulative_returns_data.append((x_data, cumulative_returns, label))
+                else:
+                    prices = df["Close"]
+                    daily_returns = prices.pct_change() * 100
+                    initial_price = prices.iloc[0]
+                    cumulative_returns = (
+                        (prices - initial_price) / initial_price
+                    ) * 100
+
+                    portfolio_data.append((x_data, prices, label))
+                    daily_returns_data.append((x_data, daily_returns, label))
+                    cumulative_returns_data.append((x_data, cumulative_returns, label))
+
+        # Create traces for each view mode
+        visible_traces = {
+            "portfolio": [],
+            "daily_returns": [],
+            "cumulative_returns": [],
+        }
+
+        # Add portfolio value traces (visible by default)
+        for i, (x_data, y_data, label) in enumerate(portfolio_data):
+            trace = go.Scatter(
+                x=x_data,
+                y=y_data,
+                mode="lines",
+                name=label,
+                hovertemplate=f"{label}<br>Date: %{{x}}<br>Value: %{{y:.2f}}<extra></extra>",
+                visible=True,
             )
+            fig.add_trace(trace)
+            visible_traces["portfolio"].append(True)
+            visible_traces["daily_returns"].append(False)
+            visible_traces["cumulative_returns"].append(False)
+
+        # Add daily returns traces (hidden by default)
+        for i, (x_data, y_data, label) in enumerate(daily_returns_data):
+            trace = go.Scatter(
+                x=x_data,
+                y=y_data,
+                mode="lines",
+                name=f"{label} (Daily Returns)",
+                hovertemplate=f"{label}<br>Date: %{{x}}<br>Daily Return: %{{y:.2f}}%<extra></extra>",
+                visible=False,
+            )
+            fig.add_trace(trace)
+
+        # Add cumulative returns traces (hidden by default)
+        for i, (x_data, y_data, label) in enumerate(cumulative_returns_data):
+            trace = go.Scatter(
+                x=x_data,
+                y=y_data,
+                mode="lines",
+                name=f"{label} (Cumulative Returns)",
+                hovertemplate=f"{label}<br>Date: %{{x}}<br>Cumulative Return: %{{y:.2f}}%<extra></extra>",
+                visible=False,
+            )
+            fig.add_trace(trace)
+
+        # Create toggle buttons (positioned below title)
+        updatemenus = [
+            dict(
+                type="buttons",
+                direction="right",
+                buttons=[
+                    dict(
+                        label="Portfolio Value",
+                        method="update",
+                        args=[
+                            {
+                                "visible": [True]
+                                * len(portfolio_data)  # Portfolio traces visible
+                                + [False]
+                                * len(daily_returns_data)  # Daily returns traces hidden
+                                + [False]
+                                * len(
+                                    cumulative_returns_data
+                                )  # Cumulative returns traces hidden
+                            },
+                            {
+                                "yaxis.title": "Portfolio Value ($)",
+                            },
+                        ],
+                    ),
+                    dict(
+                        label="Daily Returns",
+                        method="update",
+                        args=[
+                            {
+                                "visible": [False]
+                                * len(portfolio_data)  # Portfolio traces hidden
+                                + [True]
+                                * len(
+                                    daily_returns_data
+                                )  # Daily returns traces visible
+                                + [False]
+                                * len(
+                                    cumulative_returns_data
+                                )  # Cumulative returns traces hidden
+                            },
+                            {
+                                "yaxis.title": "Daily Return (%)",
+                            },
+                        ],
+                    ),
+                    dict(
+                        label="Cumulative Returns",
+                        method="update",
+                        args=[
+                            {
+                                "visible": [False]
+                                * len(portfolio_data)  # Portfolio traces hidden
+                                + [False]
+                                * len(daily_returns_data)  # Daily returns traces hidden
+                                + [True]
+                                * len(
+                                    cumulative_returns_data
+                                )  # Cumulative returns traces visible
+                            },
+                            {
+                                "yaxis.title": "Cumulative Return (%)",
+                            },
+                        ],
+                    ),
+                ],
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.0,
+                xanchor="left",
+                y=-0.15,  # Position below the chart
+                yanchor="top",
+            )
+        ]
 
         fig.update_layout(
-            title=title,
+            title="Strategy Performance Analysis",
             xaxis_title="Date",
-            yaxis_title=y_label,
+            yaxis_title="Portfolio Value ($)",
             hovermode="x unified",
             template="plotly_white",
+            updatemenus=updatemenus,
         )
 
         # Print performance summary
-        print(f"\n{title}")
+        print("\nPortfolio Value Over Time")
         print("=" * 60)
         for i, (df, label) in enumerate(zip(data_frames, labels)):
             if df.empty:
