@@ -1,0 +1,75 @@
+{
+  "name": "Dual MA with RSI",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "fast_ma",
+      "type": "SMA",
+      "period": 50
+    },
+    {
+      "name": "slow_ma",
+      "type": "SMA",
+      "period": 200
+    },
+    {
+      "name": "rsi",
+      "type": "RSI",
+      "period": 14
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "fast_ma",
+          "operator": ">",
+          "threshold": 0.03
+        },
+        {
+          "calculation": "slow_ma",
+          "operator": ">",
+          "threshold": 0.01
+        },
+        {
+          "calculation": "rsi",
+          "operator": ">",
+          "threshold": 55
+        }
+      ],
+      "logic": "AND",
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "fast_ma",
+          "operator": "<",
+          "threshold": -0.02
+        },
+        {
+          "calculation": "slow_ma",
+          "operator": "<",
+          "threshold": 0.0
+        },
+        {
+          "calculation": "rsi",
+          "operator": "<",
+          "threshold": 45
+        }
+      ],
+      "logic": "AND",
+      "ticker": "SQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "slow_ma",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "QQQ"
+    }
+  ]
+}

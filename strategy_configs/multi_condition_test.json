@@ -1,0 +1,45 @@
+{
+  "name": "Multi-Condition Test",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_50",
+      "type": "SMA",
+      "period": 50
+    },
+    {
+      "name": "rsi",
+      "type": "RSI",
+      "period": 14
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_50",
+          "operator": ">",
+          "threshold": 0.02
+        },
+        {
+          "calculation": "rsi",
+          "operator": "<",
+          "threshold": 70
+        }
+      ],
+      "logic": "AND",
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_50",
+          "operator": "<",
+          "threshold": -0.02
+        }
+      ],
+      "logic": "OR",
+      "ticker": "SQQQ"
+    }
+  ]
+}

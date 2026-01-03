@@ -18,6 +18,16 @@ class IndicatorCalculator:
         """Calculate Simple Moving Average."""
         return prices.rolling(window=period).mean()
 
+    @staticmethod
+    def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
+        """Calculate Relative Strength Index."""
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+
 
 class RuleEngine:
     """Evaluates strategy rules to determine allocations."""
@@ -25,12 +35,13 @@ class RuleEngine:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.underlying_symbol = config["underlying_symbol"]
-        self.calculation = config.get("calculation")  # Optional
+        self.calculations = config.get("calculations", [])  # Multiple calculations
         self.rules = config["rules"]
 
     def evaluate_rules(self, data: pd.DataFrame, date_idx: int) -> Dict[str, float]:
         """
         Evaluate rules for a given date and return target allocation.
+        Uses multi-condition format with calculations array.
 
         Args:
             data: DataFrame with price data
@@ -39,17 +50,23 @@ class RuleEngine:
         Returns:
             Dict of ticker -> percentage allocation
         """
-        # If no calculation is needed (buy-and-hold style), just return the rule allocation
-        if not self.calculation:
-            # For strategies without calculations, just return the first rule's allocation
-            if self.rules:
-                rule = self.rules[0]
-                return self._parse_allocation(rule.get("ticker"))
-            return {}
+        # Handle multi-condition format
+        if self.calculations:
+            return self._evaluate_multi_condition_rules(data, date_idx)
 
-        # Calculate indicator for technical analysis strategies
-        if self.calculation["type"] == "SMA":
-            period = self.calculation["period"]
+        # Buy-and-hold style (no calculations)
+        if self.rules:
+            rule = self.rules[0]
+            return self._parse_allocation(rule.get("ticker"))
+        return {}
+
+    def _evaluate_legacy_rules(
+        self, data: pd.DataFrame, date_idx: int
+    ) -> Dict[str, float]:
+        """Evaluate rules using legacy single-calculation format."""
+        calculation = self.calculation
+        if calculation["type"] == "SMA":
+            period = calculation["period"]
             if date_idx < period - 1:
                 return {}  # Not enough data
 
@@ -60,11 +77,9 @@ class RuleEngine:
             # Calculate deviation (current - SMA) / SMA
             deviation = (current_price - indicator_value) / indicator_value
         else:
-            raise ValueError(
-                f"Unsupported calculation type: {self.calculation['type']}"
-            )
+            raise ValueError(f"Unsupported calculation type: {calculation['type']}")
 
-        # Evaluate rules in order
+        # Evaluate legacy rules
         for rule in self.rules:
             if "min_threshold" in rule and "max_threshold" in rule:
                 # Between rule with interpolation
@@ -111,24 +126,96 @@ class RuleEngine:
                 if deviation >= rule["min_threshold"]:
                     return self._parse_allocation(rule.get("ticker"))
 
-        # Default: no allocation
         return {}
 
-    def _apply_scaling_function(self, factor: float, scaling_func: str) -> float:
-        """
-        Apply scaling function to interpolation factor.
+    def _evaluate_multi_condition_rules(
+        self, data: pd.DataFrame, date_idx: int
+    ) -> Dict[str, float]:
+        """Evaluate rules using new multi-condition format."""
+        current_price = data["Close"].iloc[date_idx]
 
-        Args:
-            factor: Raw interpolation factor (0-1)
-            scaling_func: Scaling function name
+        # Calculate all indicators
+        indicators = {}
+        for calc in self.calculations:
+            calc_name = calc["name"]
+            calc_type = calc["type"]
 
-        Returns:
-            Scaled factor
-        """
-        if scaling_func == "linear":
-            return factor
-        else:
-            raise ValueError(f"Unsupported scaling function: {scaling_func}")
+            if calc_type == "SMA":
+                period = calc["period"]
+                if date_idx < period - 1:
+                    indicators[calc_name] = None  # Not enough data
+                    continue
+
+                prices = data["Close"][: date_idx + 1]
+                sma_value = IndicatorCalculator.calculate_sma(prices, period).iloc[-1]
+                # Calculate deviation from SMA: (current - SMA) / SMA
+                indicators[calc_name] = (current_price - sma_value) / sma_value
+
+            elif calc_type == "RSI":
+                period = calc.get("period", 14)
+                if date_idx < period:
+                    indicators[calc_name] = None
+                    continue
+
+                prices = data["Close"][: date_idx + 1]
+                indicators[calc_name] = IndicatorCalculator.calculate_rsi(
+                    prices, period
+                ).iloc[-1]
+
+            else:
+                raise ValueError(f"Unsupported calculation type: {calc_type}")
+
+        # Evaluate rules with conditions
+        for rule in self.rules:
+            if "conditions" not in rule:
+                continue  # Skip legacy rules
+
+            conditions = rule["conditions"]
+            logic = rule.get("logic", "AND")
+
+            # Evaluate all conditions
+            condition_results = []
+            for condition in conditions:
+                calc_name = condition["calculation"]
+                operator = condition["operator"]
+                threshold = condition["threshold"]
+
+                if indicators[calc_name] is None:
+                    condition_results.append(False)  # Not enough data
+                    continue
+
+                indicator_value = indicators[calc_name]
+
+                # Evaluate condition
+                if operator == ">":
+                    result = indicator_value > threshold
+                elif operator == "<":
+                    result = indicator_value < threshold
+                elif operator == ">=":
+                    result = indicator_value >= threshold
+                elif operator == "<=":
+                    result = indicator_value <= threshold
+                elif operator == "==":
+                    result = (
+                        abs(indicator_value - threshold) < 1e-6
+                    )  # Floating point comparison
+                else:
+                    raise ValueError(f"Unsupported operator: {operator}")
+
+                condition_results.append(result)
+
+            # Combine conditions with logic
+            if logic == "AND":
+                rule_triggered = all(condition_results)
+            elif logic == "OR":
+                rule_triggered = any(condition_results)
+            else:
+                raise ValueError(f"Unsupported logic: {logic}")
+
+            if rule_triggered:
+                return self._parse_allocation(rule.get("ticker"))
+
+        return {}
 
     def _parse_allocation(self, allocation_value) -> Dict[str, float]:
         """
@@ -157,10 +244,15 @@ class RuleEngine:
 class PortfolioSimulator:
     """Simulates portfolio performance using closing prices only (simplified approach)."""
 
-    def __init__(self, initial_capital: float = 10000.0):
+    def __init__(
+        self, initial_capital: float = 10000.0, monthly_investment: float = 0.0
+    ):
         self.initial_capital = initial_capital
+        self.monthly_investment = monthly_investment
         self.portfolio_value = initial_capital
+        self.total_invested = initial_capital  # Track total money put in
         self.previous_allocation = {}  # Track previous allocation for return calc
+        self.last_investment_date = None  # Track when we last added money
 
     def calculate_daily_return(
         self,
@@ -248,26 +340,50 @@ class Backtester:
             if field not in config:
                 raise ValueError(f"Config missing required field: {field}")
 
-        # Validate calculation (optional)
-        if "calculation" in config:
-            calculation = config["calculation"]
-            if not isinstance(calculation, dict):
-                raise ValueError("calculation must be a dictionary")
+        # Validate calculations (required for strategies with technical analysis)
+        if "calculations" in config:
+            calculations = config["calculations"]
+            if not isinstance(calculations, list):
+                raise ValueError("calculations must be a list")
 
-            calc_type = calculation.get("type")
-            if calc_type not in ["SMA"]:
-                raise ValueError(
-                    f"Unsupported calculation type: {calc_type}. Supported: SMA"
-                )
+            calc_names = set()
+            for calc in calculations:
+                if not isinstance(calc, dict):
+                    raise ValueError("each calculation must be a dictionary")
 
-            if calc_type == "SMA":
-                if "period" not in calculation:
-                    raise ValueError("SMA calculation requires 'period' field")
-                if (
-                    not isinstance(calculation["period"], int)
-                    or calculation["period"] <= 0
-                ):
-                    raise ValueError("SMA period must be a positive integer")
+                if "name" not in calc:
+                    raise ValueError("calculation missing 'name' field")
+                if "type" not in calc:
+                    raise ValueError("calculation missing 'type' field")
+
+                calc_name = calc["name"]
+                calc_type = calc["type"]
+
+                if calc_name in calc_names:
+                    raise ValueError(f"duplicate calculation name: {calc_name}")
+                calc_names.add(calc_name)
+
+                if calc_type not in ["SMA", "RSI"]:
+                    raise ValueError(
+                        f"Unsupported calculation type: {calc_type}. Supported: SMA, RSI"
+                    )
+
+                if calc_type == "SMA":
+                    if "period" not in calc:
+                        raise ValueError(
+                            f"SMA calculation '{calc_name}' requires 'period' field"
+                        )
+                    if not isinstance(calc["period"], int) or calc["period"] <= 0:
+                        raise ValueError(
+                            f"SMA calculation '{calc_name}' period must be a positive integer"
+                        )
+
+                elif calc_type == "RSI":
+                    period = calc.get("period", 14)
+                    if not isinstance(period, int) or period <= 0:
+                        raise ValueError(
+                            f"RSI calculation '{calc_name}' period must be a positive integer"
+                        )
 
         # Check underlying symbol exists
         underlying_symbol = config["underlying_symbol"]
@@ -286,7 +402,6 @@ class Backtester:
 
         # Collect all tickers used in rules
         all_tickers = set()
-        threshold_ranges = []
 
         for i, rule in enumerate(rules):
             # Check rule structure
@@ -294,65 +409,49 @@ class Backtester:
                 raise ValueError(f"Rule {i} must be a dictionary")
 
             # Collect tickers from this rule
-            for ticker_field in ["ticker", "ticker_min", "ticker_max"]:
-                if ticker_field in rule:
-                    ticker = rule[ticker_field]
-                    if ticker != "cash":
-                        all_tickers.add(ticker)
-                        # Check ticker exists in data
-                        ticker_path = os.path.join(
-                            self.data_dir, "real_tickers", f"{ticker}.csv"
+            if "ticker" in rule:
+                ticker = rule["ticker"]
+                if ticker != "cash":
+                    all_tickers.add(ticker)
+                    # Check ticker exists in data
+                    ticker_path = os.path.join(
+                        self.data_dir, "real_tickers", f"{ticker}.csv"
+                    )
+                    if not os.path.exists(ticker_path):
+                        raise ValueError(
+                            f"Ticker '{ticker}' in rule {i} not found in datasets/real_tickers/"
                         )
-                        if not os.path.exists(ticker_path):
+
+            # Validate conditions if present
+            if "conditions" in rule:
+                conditions = rule["conditions"]
+                if not isinstance(conditions, list):
+                    raise ValueError(f"conditions in rule {i} must be a list")
+
+                for condition in conditions:
+                    if not isinstance(condition, dict):
+                        raise ValueError(
+                            f"each condition in rule {i} must be a dictionary"
+                        )
+
+                    required_fields = ["calculation", "operator", "threshold"]
+                    for field in required_fields:
+                        if field not in condition:
                             raise ValueError(
-                                f"Ticker '{ticker}' in rule {i} not found in datasets/real_tickers/"
+                                f"condition in rule {i} missing '{field}' field"
                             )
 
-            # Validate scaling function
-            if "scaling_function" in rule:
-                scaling_func = rule["scaling_function"]
-                if scaling_func not in ["linear"]:
-                    raise ValueError(
-                        f"Unsupported scaling function '{scaling_func}' in rule {i}. Supported: linear"
-                    )
+                    # Validate operator
+                    operator = condition["operator"]
+                    if operator not in [">", "<", ">=", "<=", "=="]:
+                        raise ValueError(
+                            f"unsupported operator '{operator}' in rule {i}"
+                        )
 
-            # For strategies without calculation, rules don't need thresholds
-            if "calculation" not in config:
-                continue
-
-            # Collect threshold ranges for coverage check (only for technical analysis strategies)
-            min_thresh = rule.get("min_threshold")
-            max_thresh = rule.get("max_threshold")
-
-            if min_thresh is not None and max_thresh is not None:
-                # Between rule
-                if min_thresh >= max_thresh:
-                    raise ValueError(
-                        f"Rule {i}: min_threshold ({min_thresh}) must be < max_threshold ({max_thresh})"
-                    )
-                threshold_ranges.append((min_thresh, max_thresh))
-            elif max_thresh is not None:
-                # Below rule
-                threshold_ranges.append((float("-inf"), max_thresh))
-            elif min_thresh is not None:
-                # Above rule
-                threshold_ranges.append((min_thresh, float("inf")))
-            else:
-                raise ValueError(
-                    f"Rule {i} must have at least one threshold (min_threshold or max_threshold)"
-                )
-
-        # Check threshold coverage - ensure no gaps
-        threshold_ranges.sort()
-
-        # Check for gaps between ranges
-        for i in range(len(threshold_ranges) - 1):
-            current_max = threshold_ranges[i][1]
-            next_min = threshold_ranges[i + 1][0]
-            if current_max < next_min:
-                raise ValueError(
-                    f"Gap in threshold coverage between {current_max} and {next_min}. Rules must provide complete coverage."
-                )
+                # Validate logic
+                logic = rule.get("logic", "AND")
+                if logic not in ["AND", "OR"]:
+                    raise ValueError(f"unsupported logic '{logic}' in rule {i}")
 
         print(f"✓ Config validation passed for {config_path}")
 
@@ -409,6 +508,7 @@ class Backtester:
         start_date: str = None,
         end_date: str = None,
         initial_capital: float = 10000.0,
+        monthly_investment: float = 0.0,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Run the backtest simulation with realistic next-day execution.
@@ -420,6 +520,7 @@ class Backtester:
             start_date: Start date for simulation (YYYY-MM-DD)
             end_date: End date for simulation (YYYY-MM-DD)
             initial_capital: Starting portfolio value
+            monthly_investment: Monthly DCA investment amount
 
         Returns:
             Tuple of (strategy_results, simulation_results)
@@ -461,13 +562,17 @@ class Backtester:
         simulation_data = simulation_data.reset_index(drop=True)
 
         # Run portfolio simulation with realistic execution timing
-        self.portfolio = PortfolioSimulator(initial_capital)
+        # Initialize portfolio with DCA parameters
+        self.portfolio = PortfolioSimulator(initial_capital, monthly_investment)
 
         simulation_results = []
         previous_prices = {}
+        current_month = None
 
         for idx in range(len(simulation_data)):
             current_date = simulation_data.iloc[idx]["Date"]
+            current_date_obj = pd.to_datetime(current_date)
+            month_key = f"{current_date_obj.year}-{current_date_obj.month:02d}"
 
             # Get prices for all tickers on this date
             current_prices = {}
@@ -478,6 +583,13 @@ class Backtester:
 
             if not current_prices:
                 continue
+
+            # DCA Logic: Add monthly investment on first trading day of each month
+            if self.portfolio.monthly_investment > 0 and month_key != current_month:
+                # This is the first trading day of a new month
+                self.portfolio.portfolio_value += self.portfolio.monthly_investment
+                self.portfolio.total_invested += self.portfolio.monthly_investment
+                current_month = month_key
 
             # Get allocation made on the PREVIOUS day (no look-ahead bias)
             date_allocation = {}
@@ -500,11 +612,12 @@ class Backtester:
             # Update portfolio value
             portfolio_value = self.portfolio.update_portfolio_value(daily_return)
 
-            # Record results
+            # Record results (include total invested for DCA tracking)
             simulation_result = {
                 "Date": current_date,
                 "Strategy_Name": self.config["name"],
                 "Portfolio_Value": portfolio_value,
+                "Total_Invested": self.portfolio.total_invested,
                 "Daily_Return": daily_return,
             }
 

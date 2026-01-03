@@ -1,0 +1,49 @@
+{
+  "name": "Adaptive Aggressive",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_20",
+      "type": "SMA",
+      "period": 20
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": "<=",
+          "threshold": -0.01
+        }
+      ],
+      "ticker": "cash"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">",
+          "threshold": -0.01
+        },
+        {
+          "calculation": "sma_20",
+          "operator": "<=",
+          "threshold": 0.01
+        }
+      ],
+      "logic": "AND",
+      "ticker": "QQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">",
+          "threshold": 0.01
+        }
+      ],
+      "ticker": "TQQQ"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "name": "Adaptive Trend Confirmed",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_20",
+      "type": "SMA",
+      "period": 20
+    },
+    {
+      "name": "sma_200",
+      "type": "SMA",
+      "period": 200
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": "<=",
+          "threshold": -0.03
+        },
+        {
+          "calculation": "sma_200",
+          "operator": "<=",
+          "threshold": 0.0
+        }
+      ],
+      "logic": "OR",
+      "ticker": "cash"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">",
+          "threshold": 0.01
+        },
+        {
+          "calculation": "sma_200",
+          "operator": ">",
+          "threshold": 0.01
+        }
+      ],
+      "logic": "AND",
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_200",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "QQQ"
+    }
+  ]
+}

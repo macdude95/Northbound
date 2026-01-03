@@ -1,0 +1,60 @@
+{
+  "name": "Dual MA Trend Aggressive",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "fast_ma",
+      "type": "SMA",
+      "period": 50
+    },
+    {
+      "name": "slow_ma",
+      "type": "SMA",
+      "period": 200
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "fast_ma",
+          "operator": ">",
+          "threshold": 0.02
+        },
+        {
+          "calculation": "slow_ma",
+          "operator": ">",
+          "threshold": 0.01
+        }
+      ],
+      "logic": "AND",
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "fast_ma",
+          "operator": "<",
+          "threshold": -0.01
+        },
+        {
+          "calculation": "slow_ma",
+          "operator": "<",
+          "threshold": 0.0
+        }
+      ],
+      "logic": "AND",
+      "ticker": "SQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "slow_ma",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "QQQ"
+    }
+  ]
+}

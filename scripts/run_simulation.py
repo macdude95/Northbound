@@ -18,6 +18,7 @@ def run_multiple_strategies(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     capital: float = 10000.0,
+    monthly_investment: float = 0.0,
 ) -> str:
     """
     Run multiple strategy backtests and create visualizations.
@@ -37,7 +38,14 @@ def run_multiple_strategies(
     start_str = start_date or "full"
     end_str = end_date or "full"
     capital_str = str(int(capital))
-    subfolder_name = f"{start_str}_{end_str}_{capital_str}"
+
+    # Include investment type in folder name
+    if monthly_investment > 0:
+        investment_type = f"DCA_{int(monthly_investment)}"
+    else:
+        investment_type = "LUMP_SUM"
+
+    subfolder_name = f"{start_str}_{end_str}_{capital_str}_{investment_type}"
     subfolder_path = f"data/simulations/{subfolder_name}"
 
     print(f"Running simulations in: {subfolder_path}")
@@ -51,7 +59,10 @@ def run_multiple_strategies(
             # Create backtester instance and run simulation
             backtester = Backtester(config_file)
             strategy_results, simulation_results = backtester.run_simulation(
-                start_date=start_date, end_date=end_date, initial_capital=capital
+                start_date=start_date,
+                end_date=end_date,
+                initial_capital=capital,
+                monthly_investment=monthly_investment,
             )
 
             # Ensure subfolder exists
@@ -110,11 +121,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--capital", type=float, default=10000.0, help="Starting capital"
     )
+    parser.add_argument(
+        "--monthly-investment",
+        type=float,
+        default=0.0,
+        help="Monthly DCA investment amount",
+    )
 
     args = parser.parse_args()
 
     folder_path = run_multiple_strategies(
-        args.strategy_names, args.start_date, args.end_date, args.capital
+        args.strategy_names,
+        args.start_date,
+        args.end_date,
+        args.capital,
+        args.monthly_investment,
     )
 
     print(f"\nAll results saved in: {folder_path}")

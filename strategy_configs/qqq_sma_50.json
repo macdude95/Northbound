@@ -1,17 +1,32 @@
 {
   "name": "QQQ 50 day SMA",
   "underlying_symbol": "QQQ",
-  "calculation": {
-    "type": "SMA",
-    "period": 50
-  },
+  "calculations": [
+    {
+      "name": "sma_50",
+      "type": "SMA",
+      "period": 50
+    }
+  ],
   "rules": [
     {
-      "max_threshold": 0,
+      "conditions": [
+        {
+          "calculation": "sma_50",
+          "operator": "<=",
+          "threshold": 0
+        }
+      ],
       "ticker": "SQQQ"
     },
     {
-      "min_threshold": 0,
+      "conditions": [
+        {
+          "calculation": "sma_50",
+          "operator": ">",
+          "threshold": 0
+        }
+      ],
       "ticker": "TQQQ"
     }
   ]

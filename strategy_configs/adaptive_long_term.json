@@ -1,0 +1,49 @@
+{
+  "name": "Adaptive Long Term",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_100",
+      "type": "SMA",
+      "period": 100
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": "<=",
+          "threshold": -0.02
+        }
+      ],
+      "ticker": "cash"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": ">",
+          "threshold": -0.02
+        },
+        {
+          "calculation": "sma_100",
+          "operator": "<=",
+          "threshold": 0.02
+        }
+      ],
+      "logic": "AND",
+      "ticker": "QQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": ">",
+          "threshold": 0.02
+        }
+      ],
+      "ticker": "TQQQ"
+    }
+  ]
+}

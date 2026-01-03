@@ -1,0 +1,33 @@
+{
+  "name": "Adaptive Simple SMA 40",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_40",
+      "type": "SMA",
+      "period": 40
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_40",
+          "operator": "<=",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "QQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_40",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "TQQQ"
+    }
+  ]
+}

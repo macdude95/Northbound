@@ -1,23 +1,64 @@
 {
   "name": "Adaptive Leverage",
   "underlying_symbol": "QQQ",
-  "calculation": {
-    "type": "SMA",
-    "period": 20
-  },
+  "calculations": [
+    {
+      "name": "sma_20",
+      "type": "SMA",
+      "period": 20
+    }
+  ],
   "rules": [
     {
-      "max_threshold": -0.05,
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": "<=",
+          "threshold": -0.05
+        }
+      ],
       "ticker": "cash"
     },
     {
-      "min_threshold": -0.05,
-      "max_threshold": 0.02,
-      "ticker_min": "QQQ",
-      "ticker_max": "TQQQ"
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">",
+          "threshold": -0.05
+        },
+        {
+          "calculation": "sma_20",
+          "operator": "<",
+          "threshold": 0.0
+        }
+      ],
+      "logic": "AND",
+      "ticker": "QQQ"
     },
     {
-      "min_threshold": 0.02,
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">=",
+          "threshold": 0.0
+        },
+        {
+          "calculation": "sma_20",
+          "operator": "<",
+          "threshold": 0.02
+        }
+      ],
+      "logic": "AND",
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">=",
+          "threshold": 0.02
+        }
+      ],
       "ticker": "TQQQ"
     }
   ]

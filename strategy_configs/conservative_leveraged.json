@@ -1,24 +1,49 @@
 {
   "name": "Conservative Leveraged",
   "underlying_symbol": "QQQ",
-  "calculation": {
-    "type": "SMA",
-    "period": 100
-  },
+  "calculations": [
+    {
+      "name": "sma_100",
+      "type": "SMA",
+      "period": 100
+    }
+  ],
   "rules": [
     {
-      "max_threshold": -0.1,
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": "<=",
+          "threshold": -0.03
+        }
+      ],
       "ticker": "cash"
     },
     {
-      "min_threshold": -0.1,
-      "max_threshold": 0.05,
-      "ticker_min": "QQQ",
-      "ticker_max": "TQQQ"
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": ">",
+          "threshold": 0.02
+        }
+      ],
+      "ticker": "TQQQ"
     },
     {
-      "min_threshold": 0.05,
-      "ticker": "TQQQ"
+      "conditions": [
+        {
+          "calculation": "sma_100",
+          "operator": ">",
+          "threshold": -0.03
+        },
+        {
+          "calculation": "sma_100",
+          "operator": "<=",
+          "threshold": 0.02
+        }
+      ],
+      "logic": "AND",
+      "ticker": "QQQ"
     }
   ]
 }

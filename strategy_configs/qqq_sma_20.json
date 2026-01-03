@@ -1,17 +1,32 @@
 {
   "name": "QQQ 20 day SMA",
   "underlying_symbol": "QQQ",
-  "calculation": {
-    "type": "SMA",
-    "period": 20
-  },
+  "calculations": [
+    {
+      "name": "sma_20",
+      "type": "SMA",
+      "period": 20
+    }
+  ],
   "rules": [
     {
-      "max_threshold": 0,
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": "<=",
+          "threshold": 0
+        }
+      ],
       "ticker": "SQQQ"
     },
     {
-      "min_threshold": 0,
+      "conditions": [
+        {
+          "calculation": "sma_20",
+          "operator": ">",
+          "threshold": 0
+        }
+      ],
       "ticker": "TQQQ"
     }
   ]

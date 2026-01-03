@@ -89,7 +89,9 @@ class PerformanceVisualizer:
 
         # Create plot
         if interactive:
-            self._create_interactive_plot(data_frames, labels, normalize, save_path)
+            self._create_interactive_plot(
+                data_frames, labels, normalize, save_path, csv_paths
+            )
         else:
             self._create_static_plot(data_frames, labels, normalize)
 
@@ -99,6 +101,7 @@ class PerformanceVisualizer:
         labels: List[str],
         normalize: bool,
         save_path: str = None,
+        csv_paths: List[str] = None,
     ) -> None:
         """Create interactive plotly chart with toggle for different views."""
         fig = go.Figure()
@@ -280,8 +283,33 @@ class PerformanceVisualizer:
             )
         ]
 
+        # Extract investment information from folder path
+        investment_info = ""
+        if csv_paths and len(csv_paths) > 0:
+            base_dir = os.path.dirname(csv_paths[0])
+            folder_name = os.path.basename(base_dir)
+
+            # Parse folder name: start_end_capital_investment_type
+            parts = folder_name.split("_")
+
+            if len(parts) >= 4:
+                # Handle investment types that contain underscores (like LUMP_SUM, DCA_1000)
+                last_parts = parts[-2:]  # Last two parts
+                investment_type = "_".join(last_parts)  # Join them back
+
+                if investment_type == "LUMP_SUM":
+                    capital = parts[-3] if len(parts) >= 5 else "unknown"
+                    investment_info = f"Lump Sum: ${int(capital):,}"
+                elif investment_type.startswith("DCA_"):
+                    monthly_amount = investment_type.split("_")[1]
+                    investment_info = f"DCA: ${int(monthly_amount):,}/month"
+
+        title = "Strategy Performance Analysis"
+        if investment_info:
+            title += f" - {investment_info}"
+
         fig.update_layout(
-            title="Strategy Performance Analysis",
+            title=title,
             xaxis_title="Date",
             yaxis_title="Portfolio Value ($)",
             hovermode="x unified",
