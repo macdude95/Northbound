@@ -19,6 +19,11 @@ class IndicatorCalculator:
         return prices.rolling(window=period).mean()
 
     @staticmethod
+    def calculate_ema(prices: pd.Series, period: int) -> pd.Series:
+        """Calculate Exponential Moving Average."""
+        return prices.ewm(span=period, adjust=False).mean()
+
+    @staticmethod
     def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
         """Calculate Relative Strength Index."""
         delta = prices.diff()
@@ -150,6 +155,17 @@ class RuleEngine:
                 sma_value = IndicatorCalculator.calculate_sma(prices, period).iloc[-1]
                 # Calculate deviation from SMA: (current - SMA) / SMA
                 indicators[calc_name] = (current_price - sma_value) / sma_value
+
+            elif calc_type == "EMA":
+                period = calc["period"]
+                if date_idx < period - 1:
+                    indicators[calc_name] = None  # Not enough data
+                    continue
+
+                prices = data["Close"][: date_idx + 1]
+                ema_value = IndicatorCalculator.calculate_ema(prices, period).iloc[-1]
+                # Calculate deviation from EMA: (current - EMA) / EMA
+                indicators[calc_name] = (current_price - ema_value) / ema_value
 
             elif calc_type == "RSI":
                 period = calc.get("period", 14)
@@ -363,9 +379,9 @@ class Backtester:
                     raise ValueError(f"duplicate calculation name: {calc_name}")
                 calc_names.add(calc_name)
 
-                if calc_type not in ["SMA", "RSI"]:
+                if calc_type not in ["SMA", "EMA", "RSI"]:
                     raise ValueError(
-                        f"Unsupported calculation type: {calc_type}. Supported: SMA, RSI"
+                        f"Unsupported calculation type: {calc_type}. Supported: SMA, EMA, RSI"
                     )
 
                 if calc_type == "SMA":
@@ -376,6 +392,16 @@ class Backtester:
                     if not isinstance(calc["period"], int) or calc["period"] <= 0:
                         raise ValueError(
                             f"SMA calculation '{calc_name}' period must be a positive integer"
+                        )
+
+                elif calc_type == "EMA":
+                    if "period" not in calc:
+                        raise ValueError(
+                            f"EMA calculation '{calc_name}' requires 'period' field"
+                        )
+                    if not isinstance(calc["period"], int) or calc["period"] <= 0:
+                        raise ValueError(
+                            f"EMA calculation '{calc_name}' period must be a positive integer"
                         )
 
                 elif calc_type == "RSI":

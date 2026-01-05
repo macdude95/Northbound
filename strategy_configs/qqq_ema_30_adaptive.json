@@ -1,0 +1,33 @@
+{
+  "name": "QQQ EMA 30 Adaptive",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "qqq_ema_30",
+      "type": "EMA",
+      "period": 30
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "qqq_ema_30",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "TQQQ"
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "qqq_ema_30",
+          "operator": "<=",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": "QQQ"
+    }
+  ]
+}
