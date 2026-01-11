@@ -73,7 +73,9 @@ class PolygonClient:
                         "High": agg.high,
                         "Low": agg.low,
                         "Close": agg.close,
-                        "Volume": agg.volume,
+                        "Volume": str(
+                            int(round(agg.volume))
+                        ),  # Clean volume to integer
                     }
                 )
 
