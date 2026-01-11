@@ -212,8 +212,8 @@ def main():
             print("Error: No valid strategy:percentage arguments provided")
             sys.exit(1)
 
-        # Calculate allocations
-        calculator = AllocationCalculator()
+        # Calculate allocations (enable debug mode for GitHub Actions troubleshooting)
+        calculator = AllocationCalculator(debug=True)
 
         # Get individual strategy allocations for display
         individual_allocations = {}
@@ -245,7 +245,12 @@ def main():
             print(output)
 
     except Exception as e:
+        import traceback
+
+        print(f"❌ ALLOCATION CALCULATION FAILED")
         print(f"Error: {e}")
+        print("Full traceback:")
+        traceback.print_exc()
         sys.exit(1)
 
 

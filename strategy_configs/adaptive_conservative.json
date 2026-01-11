@@ -1,0 +1,36 @@
+{
+  "name": "Adaptive Conservative SMA 30",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_30",
+      "type": "SMA",
+      "period": 30
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_30",
+          "operator": "<=",
+          "threshold": -0.02
+        }
+      ],
+      "ticker": {
+        "QQQ": 60,
+        "cash": 40
+      }
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_30",
+          "operator": ">",
+          "threshold": -0.02
+        }
+      ],
+      "ticker": "TQQQ"
+    }
+  ]
+}

@@ -8,10 +8,12 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import time
 
 # Load environment variables
 load_dotenv()
 POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
+API_CALL_DELAY_SECONDS = float(os.getenv("API_CALL_DELAY_SECONDS", "2.0"))
 
 
 class PolygonClient:
@@ -22,10 +24,17 @@ class PolygonClient:
             from polygon import RESTClient
 
             self.client = RESTClient(api_key)
+            self.time = time
         except ImportError:
             raise ImportError(
                 "polygon-api-client package required. Install with: pip install polygon-api-client"
             )
+
+    def _api_call_delay(self):
+        """Add configurable delay between API calls to avoid rate limiting."""
+        if API_CALL_DELAY_SECONDS > 0:
+            print(f"[DEBUG] API call delay: sleeping {API_CALL_DELAY_SECONDS}s")
+            self.time.sleep(API_CALL_DELAY_SECONDS)
 
     def get_aggregates(
         self,
@@ -49,6 +58,9 @@ class PolygonClient:
             DataFrame with OHLCV data
         """
         try:
+            # Add delay before API call to respect rate limits
+            self._api_call_delay()
+
             # Use Polygon SDK to get aggregates
             aggs = self.client.get_aggs(
                 ticker=ticker,

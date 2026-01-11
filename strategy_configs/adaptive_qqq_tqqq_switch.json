@@ -1,0 +1,37 @@
+{
+  "name": "Adaptive QQQ TQQQ Switch SMA 30",
+  "underlying_symbol": "QQQ",
+  "calculations": [
+    {
+      "name": "sma_30",
+      "type": "SMA",
+      "period": 30
+    }
+  ],
+  "rules": [
+    {
+      "conditions": [
+        {
+          "calculation": "sma_30",
+          "operator": "<=",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": {
+        "QQQ": 100
+      }
+    },
+    {
+      "conditions": [
+        {
+          "calculation": "sma_30",
+          "operator": ">",
+          "threshold": 0.0
+        }
+      ],
+      "ticker": {
+        "TQQQ": 100
+      }
+    }
+  ]
+}

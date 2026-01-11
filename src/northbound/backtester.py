@@ -437,7 +437,20 @@ class Backtester:
             # Collect tickers from this rule
             if "ticker" in rule:
                 ticker = rule["ticker"]
-                if ticker != "cash":
+                if isinstance(ticker, dict):
+                    # Handle percentage allocations: extract ticker symbols
+                    for alloc_ticker in ticker.keys():
+                        if alloc_ticker != "cash":
+                            all_tickers.add(alloc_ticker)
+                            # Check ticker exists in data
+                            ticker_path = os.path.join(
+                                self.data_dir, "real_tickers", f"{alloc_ticker}.csv"
+                            )
+                            if not os.path.exists(ticker_path):
+                                raise ValueError(
+                                    f"Ticker '{alloc_ticker}' in rule {i} not found in datasets/real_tickers/"
+                                )
+                elif ticker != "cash":
                     all_tickers.add(ticker)
                     # Check ticker exists in data
                     ticker_path = os.path.join(
@@ -497,13 +510,15 @@ class Backtester:
         # Load all tickers that might be allocated
         allocated_tickers = set()
         for rule in self.config["rules"]:
-            # Check for ticker strings
-            if "ticker" in rule:
-                allocated_tickers.add(rule["ticker"])
-            if "ticker_min" in rule:
-                allocated_tickers.add(rule["ticker_min"])
-            if "ticker_max" in rule:
-                allocated_tickers.add(rule["ticker_max"])
+            # Check for ticker values (handle strings and dicts)
+            for ticker_field in ["ticker", "ticker_min", "ticker_max"]:
+                if ticker_field in rule:
+                    ticker_value = rule[ticker_field]
+                    if isinstance(ticker_value, dict):
+                        # Handle percentage allocations: extract ticker symbols
+                        allocated_tickers.update(ticker_value.keys())
+                    elif isinstance(ticker_value, str):
+                        allocated_tickers.add(ticker_value)
 
             # Also check for legacy allocation objects (for backwards compatibility)
             for alloc_key in ["allocation", "allocation_min", "allocation_max"]:

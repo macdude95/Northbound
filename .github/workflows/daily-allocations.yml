@@ -33,6 +33,7 @@ jobs:
         id: allocations
         env:
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+          API_CALL_DELAY_SECONDS: '30.0' # 30 second delay between API calls
         run: |
           # Generate strategy allocation string from portfolio config
           strategy_allocation=$(python3 -c "
@@ -44,23 +45,32 @@ jobs:
           print(allocation_str)
           ")
 
-          # Get strategy breakdown for email
-          breakdown=$(python scripts/get_allocations.py --breakdown $strategy_allocation 2>&1)
+          # Get strategy breakdown for email (clean output only)
+          breakdown_output=$(python scripts/get_allocations.py --breakdown $strategy_allocation 2>&1)
+          # Filter out debug lines, keep only the clean breakdown
+          breakdown=$(echo "$breakdown_output" | grep -E "^•|^$" | head -20)
           echo "breakdown<<EOF" >> $GITHUB_OUTPUT
           echo "$breakdown" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          # Get full allocation data for copy/paste
-          summary=$(python scripts/get_allocations.py $strategy_allocation 2>&1 | grep "^- " | sed 's/^- //' | tr '\n' '\n')
-          if [ -z "$summary" ]; then
-            summary="❌ ALLOCATION CALCULATION FAILED - MANUAL CHECK REQUIRED\\nError: Unable to calculate portfolio allocations. Please check system manually."
+          # Get full allocation data for copy/paste (with debug capture)
+          set +e  # Temporarily disable exit on error for this section
+          full_output=$(python scripts/get_allocations.py $strategy_allocation 2>&1)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+
+          summary=$(echo "$full_output" | grep "^- " | sed 's/^- //' | tr '\n' '\n')
+          debug_info=$(echo "$full_output" | grep -v "^- " | head -50)  # Capture first 50 lines of non-allocation output
+
+          if [ $exit_code -ne 0 ] || [ -z "$summary" ]; then
+            summary="❌ ALLOCATION CALCULATION FAILED - FRESH MARKET DATA UNAVAILABLE\\nError: Unable to fetch current market data from Polygon API.\\nThis ensures we don't provide investment advice based on stale data.\\n\\n=== DEBUG INFO ===\\n$debug_info\\n=== END DEBUG ===\\n\\nPlease check the debug info above and API status."
           fi
           echo "summary<<EOF" >> $GITHUB_OUTPUT
           echo "$summary" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send email notification
-        if: success()
+        if: always()
         run: |
           SUBJECT="Daily Portfolio Allocations - $(date +%Y-%m-%d)"
           BODY="🚀 Daily Portfolio Allocations - $(date +%Y-%m-%d)
