@@ -28,7 +28,7 @@ class RuleEngine:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.underlying_symbol = config["underlying_symbol"]
-        self.calculation = config.get("calculation")  # Optional
+        self.calculations = config["calculations"]  # New format only
         self.rules = config["rules"]
 
     def evaluate_current_allocation(
@@ -44,94 +44,110 @@ class RuleEngine:
         Returns:
             Dict of ticker -> percentage allocation
         """
-        # If no calculation is needed (buy-and-hold style), just return the rule allocation
-        if not self.calculation:
-            # For strategies without calculations, just return the first rule's allocation
-            if self.rules:
-                rule = self.rules[0]
-                return self._parse_allocation(rule.get("ticker"))
-            return {}
+        return self._evaluate_multi_condition_rules(current_price, price_history)
 
-        # Calculate indicator for technical analysis strategies
-        if self.calculation["type"] == "SMA":
-            period = self.calculation["period"]
-            indicator_value = IndicatorCalculator.calculate_sma(price_history, period)
+    def _evaluate_multi_condition_rules(
+        self, current_price: float, price_history: pd.Series
+    ) -> Dict[str, float]:
+        """Evaluate rules using new multi-condition format."""
+        # Calculate all indicators
+        indicators = {}
+        for calc in self.calculations:
+            calc_name = calc["name"]
+            calc_type = calc["type"]
 
-            if indicator_value is None:
-                return {}  # Not enough data
+            if calc_type == "SMA":
+                period = calc["period"]
+                if len(price_history) < period:
+                    indicators[calc_name] = None  # Not enough data
+                    continue
 
-            # Calculate deviation (current - SMA) / SMA
-            deviation = (current_price - indicator_value) / indicator_value
-        else:
-            raise ValueError(
-                f"Unsupported calculation type: {self.calculation['type']}"
-            )
+                sma_value = IndicatorCalculator.calculate_sma(price_history, period)
+                if sma_value is not None:
+                    # Calculate deviation from SMA: (current - SMA) / SMA
+                    indicators[calc_name] = (current_price - sma_value) / sma_value
 
-        # Evaluate rules in order
+            elif calc_type == "EMA":
+                period = calc["period"]
+                if len(price_history) < period:
+                    indicators[calc_name] = None  # Not enough data
+                    continue
+
+                # Calculate EMA
+                ema_value = price_history.ewm(span=period, adjust=False).mean().iloc[-1]
+                # Calculate deviation from EMA: (current - EMA) / EMA
+                indicators[calc_name] = (current_price - ema_value) / ema_value
+
+            elif calc_type == "RSI":
+                period = calc.get("period", 14)
+                if (
+                    len(price_history) < period + 1
+                ):  # Need extra data for RSI calculation
+                    indicators[calc_name] = None
+                    continue
+
+                # Simple RSI calculation
+                delta = price_history.diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+                rs = gain / loss
+                rsi = 100 - (100 / (1 + rs))
+                indicators[calc_name] = rsi.iloc[-1]
+
+            else:
+                raise ValueError(f"Unsupported calculation type: {calc_type}")
+
+        # Evaluate rules with conditions
         for rule in self.rules:
-            if "min_threshold" in rule and "max_threshold" in rule:
-                # Between rule with interpolation
-                min_thresh = rule["min_threshold"]
-                max_thresh = rule["max_threshold"]
+            if "conditions" not in rule:
+                continue  # Skip legacy rules
 
-                if min_thresh <= deviation <= max_thresh:
-                    # Interpolate between min and max allocations
-                    if "ticker_min" in rule and "ticker_max" in rule:
-                        ticker_min = rule["ticker_min"]
-                        ticker_max = rule["ticker_max"]
-                        scaling_func = rule.get("scaling_function", "linear")
+            conditions = rule["conditions"]
+            logic = rule.get("logic", "AND")
 
-                        # Calculate interpolation factor
-                        if max_thresh == min_thresh:
-                            factor = 0.5  # Edge case
-                        else:
-                            raw_factor = (deviation - min_thresh) / (
-                                max_thresh - min_thresh
-                            )
-                            factor = self._apply_scaling_function(
-                                raw_factor, scaling_func
-                            )
+            # Evaluate all conditions
+            condition_results = []
+            for condition in conditions:
+                calc_name = condition["calculation"]
+                operator = condition["operator"]
+                threshold = condition["threshold"]
 
-                        # Create interpolated allocation
-                        interpolated = {}
-                        if ticker_min == ticker_max:
-                            # Same ticker, allocate 100%
-                            interpolated[ticker_min] = 100.0
-                        else:
-                            # Different tickers, interpolate between them
-                            interpolated[ticker_min] = 100.0 * (1 - factor)
-                            interpolated[ticker_max] = 100.0 * factor
+                if indicators.get(calc_name) is None:
+                    condition_results.append(False)  # Not enough data
+                    continue
 
-                        return interpolated
+                indicator_value = indicators[calc_name]
 
-            elif "max_threshold" in rule:
-                # Below rule
-                if deviation <= rule["max_threshold"]:
-                    return self._parse_allocation(rule.get("ticker"))
+                # Evaluate condition
+                if operator == ">":
+                    result = indicator_value > threshold
+                elif operator == "<":
+                    result = indicator_value < threshold
+                elif operator == ">=":
+                    result = indicator_value >= threshold
+                elif operator == "<=":
+                    result = indicator_value <= threshold
+                elif operator == "==":
+                    result = (
+                        abs(indicator_value - threshold) < 1e-6
+                    )  # Floating point comparison
+                else:
+                    raise ValueError(f"Unsupported operator: {operator}")
 
-            elif "min_threshold" in rule:
-                # Above rule
-                if deviation >= rule["min_threshold"]:
-                    return self._parse_allocation(rule.get("ticker"))
+                condition_results.append(result)
 
-        # Default: no allocation
+            # Combine conditions with logic
+            if logic == "AND":
+                rule_triggered = all(condition_results)
+            elif logic == "OR":
+                rule_triggered = any(condition_results)
+            else:
+                raise ValueError(f"Unsupported logic: {logic}")
+
+            if rule_triggered:
+                return self._parse_allocation(rule.get("ticker"))
+
         return {}
-
-    def _apply_scaling_function(self, factor: float, scaling_func: str) -> float:
-        """
-        Apply scaling function to interpolation factor.
-
-        Args:
-            factor: Raw interpolation factor (0-1)
-            scaling_func: Scaling function name
-
-        Returns:
-            Scaled factor
-        """
-        if scaling_func == "linear":
-            return factor
-        else:
-            raise ValueError(f"Unsupported scaling function: {scaling_func}")
 
     def _parse_allocation(self, allocation_value) -> Dict[str, float]:
         """
@@ -169,7 +185,7 @@ class AllocationCalculator:
             config = json.load(f)
 
         # Basic validation
-        required_fields = ["name", "underlying_symbol", "rules"]
+        required_fields = ["name", "underlying_symbol", "calculations", "rules"]
         for field in required_fields:
             if field not in config:
                 raise ValueError(f"Config missing required field: {field}")

@@ -247,24 +247,3 @@ def backfill_all_tickers(data_dir: str, tickers: list[str] = None) -> None:
         success = update_ticker_data(ticker, csv_path, client)
         if not success:
             print(f"Failed to update {ticker}")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Backfill historical data using Polygon.io API"
-    )
-    parser.add_argument(
-        "data_dir",
-        nargs="?",
-        default="data",
-        help="Path to data directory (default: data)",
-    )
-    parser.add_argument(
-        "--tickers", nargs="*", help="Specific tickers to backfill (default: all)"
-    )
-
-    args = parser.parse_args()
-
-    backfill_all_tickers(args.data_dir, args.tickers)

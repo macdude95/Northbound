@@ -4,7 +4,7 @@ Northbound - Trading strategy backtesting and visualization toolkit.
 
 from .backtester import Backtester, run_backtest
 from .visualizer import PerformanceVisualizer, create_performance_chart
-from .data_manager import backfill_all_tickers
+from .data_utils import backfill_all_tickers
 from .allocation_calculator import AllocationCalculator
 
 __version__ = "1.0.0"
