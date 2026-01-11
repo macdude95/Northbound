@@ -38,18 +38,21 @@ def process_investing_csv(input_path: str, output_path: str, ticker: str):
     for col in ["Close", "Open", "High", "Low"]:
         df[col] = df[col].apply(clean_numeric)
 
-    # Clean volume column (remove 'M', 'K', 'B', convert to float, then back to string)
+    # Clean volume column (remove 'M', 'K', 'B', convert to integer)
     def clean_volume(vol):
         if isinstance(vol, str):
             vol = vol.replace(",", "")  # Remove commas first
             if vol.endswith("B"):
-                return str(float(vol[:-1]) * 1000000000)
+                result = float(vol[:-1]) * 1000000000
             elif vol.endswith("M"):
-                return str(float(vol[:-1]) * 1000000)
+                result = float(vol[:-1]) * 1000000
             elif vol.endswith("K"):
-                return str(float(vol[:-1]) * 1000)
+                result = float(vol[:-1]) * 1000
             else:
-                return str(float(vol))
+                result = float(vol)
+
+            # Round to nearest integer to avoid floating point precision issues
+            return str(int(round(result)))
         return str(vol)
 
     df["Volume"] = df["Volume"].apply(clean_volume)
@@ -124,18 +127,21 @@ def process_investing_csv_to_df(input_path: str, ticker: str) -> pd.DataFrame:
     for col in ["Close", "Open", "High", "Low"]:
         df[col] = df[col].apply(clean_numeric)
 
-    # Clean volume column (remove 'M', 'K', 'B', convert to float, then back to string)
+    # Clean volume column (remove 'M', 'K', 'B', convert to integer)
     def clean_volume(vol):
         if isinstance(vol, str):
             vol = vol.replace(",", "")  # Remove commas first
             if vol.endswith("B"):
-                return str(float(vol[:-1]) * 1000000000)
+                result = float(vol[:-1]) * 1000000000
             elif vol.endswith("M"):
-                return str(float(vol[:-1]) * 1000000)
+                result = float(vol[:-1]) * 1000000
             elif vol.endswith("K"):
-                return str(float(vol[:-1]) * 1000)
+                result = float(vol[:-1]) * 1000
             else:
-                return str(float(vol))
+                result = float(vol)
+
+            # Round to nearest integer to avoid floating point precision issues
+            return str(int(round(result)))
         return str(vol)
 
     df["Volume"] = df["Volume"].apply(clean_volume)
