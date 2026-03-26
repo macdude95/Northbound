@@ -1,9 +1,9 @@
 name: Daily Portfolio Allocations
 
-# Run when NYSE opens (9:30 AM ET = 14:30 UTC) Monday-Friday
+# Run before NYSE opens (8:00 AM ET = 12:00 UTC) Monday-Friday
 on:
   schedule:
-    - cron: '30 14 * * 1-5' # 9:30 AM ET = 14:30 UTC, Mon-Fri
+    - cron: '0 12 * * 1-5' # 8:00 AM ET = 12:00 UTC, Mon-Fri
   workflow_dispatch: # Manual trigger button
 
 jobs:

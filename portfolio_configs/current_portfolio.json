@@ -1,5 +1,5 @@
 {
   "strategies": {
-    "adaptive_sma_30": 100
+    "adaptive_sma_200": 100
   }
 }
