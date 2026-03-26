@@ -1,18 +1,18 @@
 {
-  "name": "Adaptive SMA 200",
+  "name": "Adaptive SMA 100",
   "underlying_symbol": "QQQ",
   "calculations": [
     {
-      "name": "sma_200",
+      "name": "sma_100",
       "type": "SMA",
-      "period": 200
+      "period": 100
     }
   ],
   "rules": [
     {
       "conditions": [
         {
-          "calculation": "sma_200",
+          "calculation": "sma_100",
           "operator": "<=",
           "threshold": -0.01
         }
@@ -22,7 +22,7 @@
     {
       "conditions": [
         {
-          "calculation": "sma_200",
+          "calculation": "sma_100",
           "operator": ">",
           "threshold": -0.01
         }
