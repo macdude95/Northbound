@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# TQQQ hedged-DCA tracker: personal position state lives in the Obsidian vault.
+# Never commit it (it contains real holdings).
+tqqq-state.json
