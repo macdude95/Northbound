@@ -3,7 +3,7 @@
 Weekly TQQQ Hedged-DCA action card.
 
 A standalone, simplified take on a leveraged-ETF accumulation strategy: a
-throttled weekly DCA into TQQQ plus an exposure-ramped protective-put hedge.
+throttled weekly DCA into TQQQ plus a share-scaled protective-put hedge.
 It fetches QQQ + TQQQ from the Yahoo Finance chart API, reads your current
 position from a local state file, and prints an action card telling you how
 much to buy and whether to touch the hedge.
@@ -36,12 +36,9 @@ CONFIG = {
     "base_weekly_usd": 500,        # base weekly DCA dollar amount
     "mode": "throttled",           # "throttled" (SMA tiers below) or "flat" (always 1x)
 
-    # --- Hedge: exposure-ramped (coverage grows as TQQQ grows vs the reserve) ---
-    "hedge_mode": "ramped",            # "ramped" or "fixed"
-    "hedge_max_coverage_pct": 0.50,    # coverage cap once fully ramped
-    "hedge_ramp_start_ratio": 0.50,    # TQQQ/reserve below this -> 0% hedge (cash is the buffer)
-    "hedge_ramp_full_ratio": 1.00,     # TQQQ/reserve at/above this -> full max coverage
-    "hedge_coverage_pct": 0.50,        # used only when hedge_mode == "fixed"
+    # --- Hedge: scales with the number of TQQQ shares held ---
+    "hedge_min_shares": 100,           # no puts until you hold at least this many shares (1 contract worth)
+    "hedge_coverage_pct": 0.50,        # once past the floor, cover this fraction of your shares with puts
 
     # --- Put mechanics (only matter once the hedge is actually on) ---
     "hedge_otm_pct": 0.20,         # suggested put strike = TQQQ price * (1 - this)
@@ -95,30 +92,16 @@ def load_state():
     return {"tqqq_shares": 0, "reserve_usd": 0, "puts": []}
 
 
-def hedge_target_pct(tqqq_notional, reserve):
-    """Return (coverage_fraction, exposure_ratio).
+def hedge_contracts(shares_held):
+    """How many protective put contracts to target for a given share count.
 
-    Exposure-ramped: while TQQQ is small relative to the cash reserve, the
-    reserve itself is the buffer and we hold no puts. As TQQQ grows toward and
-    past the reserve, coverage ramps linearly from 0 up to the cap.
+    Pure function of shares held: no puts below the floor (one contract covers
+    100 shares, so a smaller position cannot be hedged sensibly), then cover
+    hedge_coverage_pct of your shares, rounded up to whole contracts.
     """
-    if CONFIG["hedge_mode"] == "fixed":
-        ratio = (tqqq_notional / reserve) if reserve > 0 else 0.0
-        return CONFIG["hedge_coverage_pct"], ratio
-    if reserve <= 0:
-        ratio = float("inf") if tqqq_notional > 0 else 0.0
-    else:
-        ratio = tqqq_notional / reserve
-    start = CONFIG["hedge_ramp_start_ratio"]
-    full = CONFIG["hedge_ramp_full_ratio"]
-    cap = CONFIG["hedge_max_coverage_pct"]
-    if ratio <= start:
-        frac = 0.0
-    elif ratio >= full:
-        frac = 1.0
-    else:
-        frac = (ratio - start) / (full - start)
-    return cap * frac, ratio
+    if shares_held < CONFIG["hedge_min_shares"]:
+        return 0
+    return math.ceil(shares_held * CONFIG["hedge_coverage_pct"] / 100.0)
 
 
 def suggest_expiry(today):
@@ -143,9 +126,8 @@ def main():
 
     shares_held = state.get("tqqq_shares", 0)
     reserve = state.get("reserve_usd", 0)
-    tqqq_notional = shares_held * tqqq_price
-    coverage, ratio = hedge_target_pct(tqqq_notional, reserve)
-    target_contracts = math.ceil(shares_held * coverage / 100.0)
+    coverage = CONFIG["hedge_coverage_pct"]
+    target_contracts = hedge_contracts(shares_held)
     puts = state.get("puts", [])
     have_contracts = sum(p.get("contracts", 0) for p in puts)
 
@@ -171,24 +153,23 @@ def main():
 
     if shares_held == 0:
         print("2) HEDGE: No position yet -> initiate when ready; no hedge needed.")
+    elif shares_held < CONFIG["hedge_min_shares"]:
+        print("2) HEDGE: %d shares held (need %d for 1 contract) -> no hedge yet."
+              % (shares_held, CONFIG["hedge_min_shares"]))
     else:
-        print("   Exposure: TQQQ $%.0f vs reserve $%.0f  =  %.0f%% of reserve "
-              "(hedge: 0%% below 50%%, ramps to 50%% cover by 100%%)"
-              % (tqqq_notional, reserve, ratio * 100.0))
-        if coverage <= 0:
-            print("2) HEDGE: UNHEDGED, and that is fine - TQQQ is below 50%% of your reserve.")
-            print("         ->  No put needed yet. The card will flag you when to start.")
-        else:
-            print("2) HEDGE: target %.0f%% coverage = %d put(s); you hold %d | nearest DTE %s"
-                  % (coverage * 100, target_contracts, have_contracts,
-                     "n/a" if min_dte is None else str(min_dte)))
-            actions = []
-            if have_contracts < target_contracts:
-                actions.append("BUY %d put(s) ~$%d strike, exp ~%s"
-                               % (target_contracts - have_contracts, strike, exp))
-            if min_dte is not None and min_dte < CONFIG["roll_dte_threshold"]:
-                actions.append("ROLL nearest put out to ~%s (strike ~$%d)" % (exp, strike))
-            print("         ->  %s" % ("; ".join(actions) if actions else "HOLD (no action)"))
+        print("2) HEDGE: cover %.0f%% of %d shares = %d put(s); you hold %d | nearest DTE %s"
+              % (coverage * 100, shares_held, target_contracts, have_contracts,
+                 "n/a" if min_dte is None else str(min_dte)))
+        actions = []
+        if have_contracts < target_contracts:
+            actions.append("BUY %d put(s) ~$%d strike, exp ~%s"
+                           % (target_contracts - have_contracts, strike, exp))
+        elif have_contracts > target_contracts:
+            actions.append("you hold %d, target %d -> can let %d expire/sell"
+                           % (have_contracts, target_contracts, have_contracts - target_contracts))
+        if min_dte is not None and min_dte < CONFIG["roll_dte_threshold"]:
+            actions.append("ROLL nearest put out to ~%s (strike ~$%d)" % (exp, strike))
+        print("         ->  %s" % ("; ".join(actions) if actions else "HOLD (no action)"))
 
     print("")
     print("Reserve after buy: $%.0f" % (reserve - spend))
