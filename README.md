@@ -39,7 +39,8 @@ POLYGON_API_KEY=your_api_key_here
 │       └── {date_range}_{capital}/ # Subfolders with simulation + HTML files
 ├── scripts/              # Command-line interface scripts
 │   ├── run_simulation.py # Multi-strategy simulation runner
-│   └── dataset_importer.py # Dataset import utilities
+│   ├── dataset_importer.py # Dataset import utilities
+│   └── action_card.py    # Standalone weekly TQQQ hedged-DCA action card (stdlib only)
 ├── src/northbound/       # Main library package
 │   ├── __init__.py       # Package initialization
 │   ├── backtester.py     # Backtesting engine
@@ -113,6 +114,45 @@ python3 scripts/get_allocations.py qqq:100
 - `strategy:percentage`: Strategy name and portfolio percentage (required when not using --portfolio-config, multiple allowed)
 
 **Outputs**: Formatted table showing individual strategy allocations and final portfolio allocation
+
+#### Weekly TQQQ Hedged-DCA Action Card
+
+**Purpose**: A standalone, low-touch weekly tool for a simplified two-pillar take on leveraged-ETF accumulation: a throttled DCA into TQQQ plus an exposure-ramped protective-put hedge. It prints a once-a-week "action card" telling you how much TQQQ to buy and whether to buy or roll a protective put. It is meant to be run on a weekly cadence and acted on by hand in a few minutes.
+
+**Standalone**: Unlike the simulation and allocation tools above, this script needs no virtual environment, no `requirements.txt`, and no Polygon.io key. It uses only the Python standard library plus the free Yahoo Finance chart API.
+
+**Command**:
+
+```bash
+python3 scripts/action_card.py
+```
+
+**How it works**:
+
+- Pulls QQQ and TQQQ prices and QQQ's 200-day SMA from Yahoo Finance.
+- Throttles the weekly buy by how far QQQ sits from its 200-day SMA (buy more on dips, less when extended).
+- Sizes the protective-put hedge by exposure: 0% coverage while TQQQ is under half your cash reserve, ramping linearly to a 50% coverage cap as TQQQ grows to match and then exceed the reserve.
+- Reads your current position (shares, reserve, puts) from a state file and prints the recommended actions.
+
+**State file**: Reads `tqqq-state.json` from `$TQQQ_VAULT` (default `~/Nexus/`). This file holds your real position and is intentionally git-ignored, so it is never committed. Point `TQQQ_VAULT` elsewhere on other machines.
+
+**Configuration**: Edit the `CONFIG` block at the top of the script (base weekly amount, throttled vs flat, hedge ramp thresholds, put tenor and roll rule).
+
+**Read-only**: The script never places a trade. It only prints recommendations; you place every order yourself.
+
+**Example output**:
+
+```
+=== TQQQ Action Card  2026-06-22 ===
+QQQ $740.62 | 200d SMA $628.63 | +17.8% vs SMA  ->  Tier: Extended (0.5x)
+TQQQ $82.87
+
+1) DCA  : Buy $250 of TQQQ  ~=  3 shares @ $82.87  (= $249)
+2) HEDGE: No position yet -> initiate when ready; no hedge needed.
+
+Reserve after buy: $99751
+(Recommendation only. Place trades yourself, then reply with what you did.)
+```
 
 #### Portfolio Rebalancing Calculator
 
